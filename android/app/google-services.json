@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "818246451071",
+    "project_id": "pronto-15e76",
+    "storage_bucket": "pronto-15e76.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:818246451071:android:5e458860a0f36928c1244a",
+        "android_client_info": {
+          "package_name": "com.example.pronto"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAth3HDQ_0lQ2PrDLTW3YN9GUb80aRDZKU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
