@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:pronto/screens/onboarding/splash_screen.dart';
 import 'firebase_options.dart';
 
 void main() async {
@@ -32,7 +33,7 @@ class MyApp extends StatelessWidget {
           labelSmall: TextStyle(fontSize: 10, fontFamily: 'Inter'),
         ),
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      home: const SplashScreen(),
     );
   }
 }
