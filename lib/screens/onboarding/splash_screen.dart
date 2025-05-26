@@ -3,7 +3,7 @@ import 'welcome_screen.dart';
 import '../../constants.dart';
 
 class SplashScreen extends StatefulWidget {
-  const SplashScreen({Key? key}) : super(key: key);
+  const SplashScreen({super.key});
 
   @override
   State<SplashScreen> createState() => _SplashScreenState();
@@ -11,8 +11,8 @@ class SplashScreen extends StatefulWidget {
 
 class _SplashScreenState extends State<SplashScreen>
     with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _fadeAnimation;
+  late AnimationController _controller; // controls animation timing
+  late Animation<double> _fadeAnimation; // defines the fade-in effect
 
   @override
   void initState() {
@@ -64,7 +64,7 @@ class _SplashScreenState extends State<SplashScreen>
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Image.asset(
-                'assets/images/logo_white.png',
+                'assets/images/logo_white_with_words.png',
                 width: 250,
                 height: 250,
               ),
