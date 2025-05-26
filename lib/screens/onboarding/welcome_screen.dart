@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
-// import 'package:lottie/lottie.dart';
 import '../../constants.dart';
-// import 'auth/sign_up_screen.dart';
-// import 'auth/sign_in_screen.dart';
+import '../auth/sign_up_screen.dart';
+import '../auth/sign_in_screen.dart';
 
 class WelcomeScreen extends StatelessWidget {
-  const WelcomeScreen({Key? key}) : super(key: key);
+  const WelcomeScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -18,28 +17,12 @@ class WelcomeScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               const Spacer(flex: 1),
-              // Lottie.asset(
-              //   'assets/animations/welcome_animation.json',
-              //   height: 250,
-              // ),
-              Container(
+              SizedBox(
                 height: 250,
                 width: double.infinity,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      AppColors.primary.withOpacity(0.1),
-                      AppColors.secondary.withOpacity(0.1),
-                    ],
-                  ),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: const Icon(
-                  Icons.work_outline,
-                  size: 100,
-                  color: AppColors.primary,
+                child: Image.asset(
+                  'assets/images/logo_blue_no_words.png',
+                  fit: BoxFit.contain,
                 ),
               ),
               const SizedBox(height: 32),
@@ -67,10 +50,10 @@ class WelcomeScreen extends StatelessWidget {
                 'Get Started',
                 AppColors.primary,
                 Colors.white,
-                () => // Navigator.push(
-                    // context,
-                    // MaterialPageRoute(builder: (context) => const SignUpScreen()),
-                    print("sign up button pressed"),
+                () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const SignUpScreen()),
+                ),
               ),
 
               const SizedBox(height: 16),
@@ -79,10 +62,10 @@ class WelcomeScreen extends StatelessWidget {
                 'I already have an account',
                 Colors.transparent,
                 AppColors.textSecondary,
-                () => // Navigator.push(
-                    // context,
-                    // MaterialPageRoute(builder: (context) => const LoginScreen()),
-                    print("login button pressed"),
+                () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const SigninScreen()),
+                ),
                 outlined: true,
               ),
               const SizedBox(height: 32),
@@ -110,7 +93,7 @@ class WelcomeScreen extends StatelessWidget {
           backgroundColor: backgroundColor,
           foregroundColor: textColor,
           elevation: outlined ? 0 : 2,
-          shadowColor: AppColors.primary.withOpacity(0.3),
+          shadowColor: AppColors.primary.withValues(alpha: 77),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
             side: outlined
