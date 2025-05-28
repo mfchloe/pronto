@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../widgets/custom_text_field.dart';
 import 'package:pronto/constants.dart';
@@ -43,12 +44,20 @@ class _SignUpScreenState extends State<SignUpScreen> {
             password: _passwordController.text,
           );
 
+      final user = userCredential.user;
+      final userId = user?.uid;
+
+      // Save user document to Firestore
+      await FirebaseFirestore.instance.collection('users').doc(userId).set({
+        'email': user?.email,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
       if (mounted) {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (context) =>
-                PersonalDetailsScreen(userEmail: userCredential.user!.email!),
+            builder: (context) => PersonalDetailsScreen(userId: userId),
           ),
         );
       }

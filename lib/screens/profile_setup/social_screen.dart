@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../../../widgets/progress_indicator.dart';
 import 'package:pronto/constants.dart';
 import '../../widgets/custom_text_field.dart';
 import 'resume_screen.dart';
 
 class SocialsScreen extends StatefulWidget {
-  final String userEmail;
+  final String? userId;
 
-  const SocialsScreen({super.key, required this.userEmail});
+  const SocialsScreen({super.key, required this.userId});
 
   @override
   State<SocialsScreen> createState() => _SocialsScreenState();
@@ -33,7 +34,7 @@ class _SocialsScreenState extends State<SocialsScreen> {
     try {
       await FirebaseFirestore.instance
           .collection('users')
-          .doc(widget.userEmail)
+          .doc(widget.userId)
           .update({
             'socials': {
               'linkedIn': _linkedInController.text,
@@ -43,10 +44,12 @@ class _SocialsScreenState extends State<SocialsScreen> {
             'updatedAt': FieldValue.serverTimestamp(),
           });
 
+      if (!mounted) return;
+
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => ResumeScreen(userEmail: widget.userEmail),
+          builder: (context) => ResumeScreen(userId: widget.userId),
         ),
       );
     } catch (e) {
@@ -94,7 +97,15 @@ class _SocialsScreenState extends State<SocialsScreen> {
                 controller: _linkedInController,
                 label: 'LinkedIn Profile',
                 hint: 'https://linkedin.com/in/your-profile',
-                prefixIcon: Icon(Icons.business),
+                prefixIcon: Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: FaIcon(
+                    FontAwesomeIcons.linkedin,
+                    color: Colors.black,
+                    size: 20,
+                  ),
+                ),
+
                 validator: (value) {
                   if (value != null && value.isNotEmpty) {
                     if (!RegExp(
@@ -111,7 +122,15 @@ class _SocialsScreenState extends State<SocialsScreen> {
                 controller: _githubController,
                 label: 'GitHub Profile',
                 hint: 'https://github.com/your-username',
-                prefixIcon: Icon(Icons.code),
+                prefixIcon: Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: FaIcon(
+                    FontAwesomeIcons.github,
+                    color: Colors.black,
+                    size: 20,
+                  ),
+                ),
+
                 validator: (value) {
                   if (value != null && value.isNotEmpty) {
                     if (!RegExp(

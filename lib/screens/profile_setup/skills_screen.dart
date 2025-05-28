@@ -2,24 +2,23 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../widgets/progress_indicator.dart';
 import 'package:pronto/constants.dart';
-import '../../widgets/custom_text_field.dart';
 import 'social_screen.dart';
 
 class SkillsScreen extends StatefulWidget {
-  final String userEmail;
+  final String? userId;
 
-  const SkillsScreen({super.key, required this.userEmail});
+  const SkillsScreen({super.key, required this.userId});
 
   @override
   State<SkillsScreen> createState() => _SkillsScreenState();
 }
 
 class _SkillsScreenState extends State<SkillsScreen> {
-  final _skillController = TextEditingController();
-  List<String> _skills = [];
+  final _customSkillController = TextEditingController();
+  List<String> _selectedSkills = [];
   bool _isLoading = false;
 
-  final List<String> _suggestedSkills = [
+  final List<String> _availableSkills = [
     'Programming',
     'Web Development',
     'Mobile Development',
@@ -38,29 +37,35 @@ class _SkillsScreenState extends State<SkillsScreen> {
     'Writing',
     'Research',
     'Sales',
-    'Customer Service',
     'Social Media',
   ];
 
   @override
   void dispose() {
-    _skillController.dispose();
+    _customSkillController.dispose();
     super.dispose();
   }
 
-  void _addSkill(String skill) {
-    if (skill.isNotEmpty && !_skills.contains(skill)) {
-      setState(() {
-        _skills.add(skill);
-      });
-      _skillController.clear();
-    }
+  void _toggleSkill(String skill) {
+    setState(() {
+      if (_selectedSkills.contains(skill)) {
+        _selectedSkills.remove(skill);
+      } else {
+        _selectedSkills.add(skill);
+      }
+    });
   }
 
-  void _removeSkill(String skill) {
-    setState(() {
-      _skills.remove(skill);
-    });
+  void _addCustomSkill() {
+    final customSkill = _customSkillController.text.trim();
+    if (customSkill.isNotEmpty &&
+        !_selectedSkills.contains(customSkill) &&
+        !_availableSkills.contains(customSkill)) {
+      setState(() {
+        _selectedSkills.add(customSkill);
+        _customSkillController.clear();
+      });
+    }
   }
 
   Future<void> _saveToFirebase() async {
@@ -69,17 +74,19 @@ class _SkillsScreenState extends State<SkillsScreen> {
     try {
       await FirebaseFirestore.instance
           .collection('users')
-          .doc(widget.userEmail)
+          .doc(widget.userId)
           .update({
-            'skills': _skills,
+            'skills': _selectedSkills,
             'completedSteps': 6,
             'updatedAt': FieldValue.serverTimestamp(),
           });
 
+      if (!mounted) return;
+
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => SocialsScreen(userEmail: widget.userEmail),
+          builder: (context) => SocialsScreen(userId: widget.userId),
         ),
       );
     } catch (e) {
@@ -115,102 +122,122 @@ class _SkillsScreenState extends State<SkillsScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Add skills that showcase your abilities and expertise',
+              'Select skills that showcase your abilities and expertise',
               style: Theme.of(
                 context,
               ).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary),
             ),
             const SizedBox(height: 32),
-            Row(
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
               children: [
-                Expanded(
-                  child: CustomTextField(
-                    controller: _skillController,
-                    label: 'Add Skill',
-                    hint: 'Type a skill and press Add',
-                    onFieldSubmitted: _addSkill,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                ElevatedButton(
-                  onPressed: () => _addSkill(_skillController.text),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 16,
+                // Available skills (predefined)
+                ..._availableSkills.map(
+                  (skill) => GestureDetector(
+                    onTap: () => _toggleSkill(skill),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                      decoration: BoxDecoration(
+                        color: _selectedSkills.contains(skill)
+                            ? AppColors.primary
+                            : Colors.grey[300],
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        skill,
+                        style: TextStyle(
+                          color: _selectedSkills.contains(skill)
+                              ? Colors.white
+                              : Colors.black,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
                     ),
                   ),
-                  child: const Text(
-                    'Add',
-                    style: TextStyle(color: Colors.white),
-                  ),
                 ),
-              ],
-            ),
-            const SizedBox(height: 24),
-            if (_suggestedSkills.isNotEmpty) ...[
-              Text(
-                'Suggested Skills',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: AppColors.textPrimary,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: _suggestedSkills
-                    .where((skill) => !_skills.contains(skill))
+                // Custom skills (user added)
+                ..._selectedSkills
+                    .where((skill) => !_availableSkills.contains(skill))
                     .map(
                       (skill) => GestureDetector(
-                        onTap: () => _addSkill(skill),
-                        child: Chip(
-                          label: Text(skill),
-                          backgroundColor: AppColors.surface,
-                          side: BorderSide(
-                            color: AppColors.primary.withValues(alpha: 128),
+                        onTap: () => _toggleSkill(skill),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            skill,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
                         ),
                       ),
-                    )
-                    .toList(),
-              ),
-              const SizedBox(height: 24),
-            ],
-            if (_skills.isNotEmpty) ...[
-              Text(
-                'Your Skills',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: AppColors.textPrimary,
-                  fontWeight: FontWeight.w600,
+                    ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            // Custom skill input field (always visible)
+            Container(
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: AppColors.textSecondary.withValues(alpha: 51),
+                  width: 1,
                 ),
               ),
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: _skills
-                    .map(
-                      (skill) => Chip(
-                        label: Text(skill),
-                        backgroundColor: AppColors.primary.withValues(
-                          alpha: 26,
-                        ),
-                        onDeleted: () => _removeSkill(skill),
-                        deleteIconColor: AppColors.primary,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _customSkillController,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: AppColors.textPrimary,
                       ),
-                    )
-                    .toList(),
+                      decoration: InputDecoration(
+                        hintText: 'Add your own skill',
+                        hintStyle: Theme.of(context).textTheme.bodyMedium
+                            ?.copyWith(color: AppColors.textSecondary),
+                        border: InputBorder.none,
+                        contentPadding: const EdgeInsets.all(16),
+                      ),
+                      onSubmitted: (_) => _addCustomSkill(),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8.0),
+                    child: ElevatedButton(
+                      onPressed: _addCustomSkill,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        minimumSize: const Size(60, 40),
+                      ),
+                      child: const Text(
+                        'Add',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 40),
-            ],
+            ),
+            const SizedBox(height: 40),
             SizedBox(
               width: double.infinity,
               height: 56,
               child: ElevatedButton(
-                onPressed: _isLoading || _skills.isEmpty
+                onPressed: _isLoading || _selectedSkills.isEmpty
                     ? null
                     : _saveToFirebase,
                 style: ElevatedButton.styleFrom(

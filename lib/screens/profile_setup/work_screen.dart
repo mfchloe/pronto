@@ -3,12 +3,13 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../widgets/progress_indicator.dart';
 import '../../widgets/custom_text_field.dart';
 import 'package:pronto/constants.dart';
+import 'package:flutter_slidable/flutter_slidable.dart';
 import 'project_screen.dart';
 
 class WorkExperienceScreen extends StatefulWidget {
-  final String userEmail;
+  final String? userId;
 
-  const WorkExperienceScreen({super.key, required this.userEmail});
+  const WorkExperienceScreen({super.key, required this.userId});
 
   @override
   State<WorkExperienceScreen> createState() => _WorkExperienceScreenState();
@@ -18,14 +19,61 @@ class _WorkExperienceScreenState extends State<WorkExperienceScreen> {
   List<Map<String, dynamic>> _workExperiences = [];
   bool _isLoading = false;
 
+  @override
+  void initState() {
+    super.initState();
+    _loadWorkExperienceData();
+  }
+
+  Future<void> _loadWorkExperienceData() async {
+    try {
+      final workSnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(widget.userId)
+          .collection('workExperience')
+          .get();
+
+      if (workSnapshot.docs.isNotEmpty) {
+        setState(() {
+          _workExperiences = workSnapshot.docs.map((doc) {
+            final data = doc.data();
+            data['id'] = doc.id;
+            return data;
+          }).toList();
+        });
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error loading work experience data: $e')),
+      );
+    }
+  }
+
   void _addWorkExperience() {
     showDialog(
       context: context,
       builder: (context) => _WorkExperienceDialog(
-        onSave: (workExperience) {
-          setState(() {
-            _workExperiences.add(workExperience);
-          });
+        onSave: (workExperience) async {
+          try {
+            final docRef = await FirebaseFirestore.instance
+                .collection('users')
+                .doc(widget.userId)
+                .collection('workExperience')
+                .add({
+                  ...workExperience,
+                  'createdAt': FieldValue.serverTimestamp(),
+                  'updatedAt': FieldValue.serverTimestamp(),
+                });
+
+            setState(() {
+              workExperience['id'] = docRef.id;
+              _workExperiences.add(workExperience);
+            });
+          } catch (e) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Error adding work experience: $e')),
+            );
+          }
         },
       ),
     );
@@ -36,13 +84,53 @@ class _WorkExperienceScreenState extends State<WorkExperienceScreen> {
       context: context,
       builder: (context) => _WorkExperienceDialog(
         workExperience: _workExperiences[index],
-        onSave: (workExperience) {
-          setState(() {
-            _workExperiences[index] = workExperience;
-          });
+        onSave: (workExperience) async {
+          try {
+            await FirebaseFirestore.instance
+                .collection('users')
+                .doc(widget.userId)
+                .collection('workExperience')
+                .doc(_workExperiences[index]['id'])
+                .update({
+                  ...workExperience,
+                  'updatedAt': FieldValue.serverTimestamp(),
+                });
+
+            setState(() {
+              workExperience['id'] = _workExperiences[index]['id'];
+              _workExperiences[index] = workExperience;
+            });
+          } catch (e) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Error updating work experience: $e')),
+            );
+          }
         },
       ),
     );
+  }
+
+  Future<void> _deleteWorkExperience(int index) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(widget.userId)
+          .collection('workExperience')
+          .doc(_workExperiences[index]['id'])
+          .delete();
+
+      setState(() {
+        _workExperiences.removeAt(index);
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Work experience deleted successfully')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error deleting work experience: $e')),
+      );
+    }
   }
 
   Future<void> _saveToFirebase() async {
@@ -51,18 +139,18 @@ class _WorkExperienceScreenState extends State<WorkExperienceScreen> {
     try {
       await FirebaseFirestore.instance
           .collection('users')
-          .doc(widget.userEmail)
+          .doc(widget.userId)
           .update({
-            'workExperience': _workExperiences,
             'completedSteps': 10,
             'updatedAt': FieldValue.serverTimestamp(),
           });
 
+      if (!mounted) return;
+
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) =>
-              ProjectExperienceScreen(userEmail: widget.userEmail),
+          builder: (context) => ProjectExperienceScreen(userId: widget.userId),
         ),
       );
     } catch (e) {
@@ -72,6 +160,56 @@ class _WorkExperienceScreenState extends State<WorkExperienceScreen> {
     } finally {
       setState(() => _isLoading = false);
     }
+  }
+
+  void _showDeleteOption(BuildContext context, int index) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(24),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Delete "${_workExperiences[index]['company']}"?',
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Cancel'),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      _deleteWorkExperience(index);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red,
+                      foregroundColor: Colors.white,
+                    ),
+                    child: const Text('Delete'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -114,14 +252,6 @@ class _WorkExperienceScreenState extends State<WorkExperienceScreen> {
                     ],
                   ),
                 ),
-                IconButton(
-                  onPressed: _addWorkExperience,
-                  icon: const Icon(Icons.add),
-                  style: IconButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
-                  ),
-                ),
               ],
             ),
             const SizedBox(height: 32),
@@ -150,89 +280,155 @@ class _WorkExperienceScreenState extends State<WorkExperienceScreen> {
                         color: AppColors.textSecondary,
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    ElevatedButton(
-                      onPressed: _addWorkExperience,
-                      child: const Text('Add Work Experience'),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 40,
+                      child: ElevatedButton(
+                        onPressed: _addWorkExperience,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          foregroundColor: AppColors.primary,
+                        ),
+                        child: const Icon(Icons.add, size: 24),
+                      ),
                     ),
                   ],
                 ),
               )
             else
-              ...(_workExperiences.asMap().entries.map((entry) {
-                final index = entry.key;
-                final work = entry.value;
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 16),
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: AppColors.surface,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: AppColors.textSecondary.withValues(alpha: 51),
-                    ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Expanded(
-                            child: Text(
-                              work['title'],
-                              style: Theme.of(context).textTheme.bodyLarge
-                                  ?.copyWith(
-                                    color: AppColors.textPrimary,
-                                    fontWeight: FontWeight.w600,
+              Column(
+                children: [
+                  ...(_workExperiences.asMap().entries.map((entry) {
+                    final index = entry.key;
+                    final workExperience = entry.value;
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 16),
+                      child: Slidable(
+                        key: Key(workExperience['id'] ?? index.toString()),
+                        endActionPane: ActionPane(
+                          motion: const DrawerMotion(),
+                          extentRatio: 0.25,
+                          children: [
+                            SlidableAction(
+                              onPressed: (context) =>
+                                  _showDeleteOption(context, index),
+                              backgroundColor: Colors.red,
+                              foregroundColor: Colors.white,
+                              icon: Icons.delete,
+                              borderRadius: const BorderRadius.only(
+                                topLeft: Radius.circular(0),
+                                bottomLeft: Radius.circular(0),
+                                topRight: Radius.circular(12),
+                                bottomRight: Radius.circular(12),
+                              ),
+                            ),
+                          ],
+                        ),
+                        child: GestureDetector(
+                          onTap: () => _editWorkExperience(index),
+                          child: Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: AppColors.surface,
+                              borderRadius: const BorderRadius.only(
+                                topLeft: Radius.circular(12),
+                                bottomLeft: Radius.circular(12),
+                                topRight: Radius.circular(0),
+                                bottomRight: Radius.circular(0),
+                              ),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        workExperience['company'],
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .bodyLarge
+                                            ?.copyWith(
+                                              color: AppColors.textPrimary,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                      ),
+                                    ),
+                                    IconButton(
+                                      onPressed: () =>
+                                          _editWorkExperience(index),
+                                      icon: const Icon(Icons.edit, size: 20),
+                                      color: AppColors.primary,
+                                    ),
+                                  ],
+                                ),
+                                Text(
+                                  workExperience['title'],
+                                  style: Theme.of(context).textTheme.bodyMedium
+                                      ?.copyWith(color: AppColors.textPrimary),
+                                ),
+                                if (workExperience['description'] != null &&
+                                    workExperience['description']
+                                        .isNotEmpty) ...[
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    workExperience['description'],
+                                    style: Theme.of(context).textTheme.bodySmall
+                                        ?.copyWith(
+                                          color: AppColors.textSecondary,
+                                        ),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
+                                ],
+                                const SizedBox(height: 8),
+                                Row(
+                                  children: [
+                                    Icon(
+                                      Icons.calendar_month,
+                                      size: 16,
+                                      color: AppColors.textSecondary,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      '${workExperience['startDate']} - ${workExperience['endDate']}',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodySmall
+                                          ?.copyWith(
+                                            color: AppColors.textSecondary,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                    ),
+                                  ],
+                                ),
+                              ],
                             ),
                           ),
-                          Row(
-                            children: [
-                              IconButton(
-                                onPressed: () => _editWorkExperience(index),
-                                icon: const Icon(Icons.edit, size: 20),
-                              ),
-                              IconButton(
-                                onPressed: () {
-                                  setState(() {
-                                    _workExperiences.removeAt(index);
-                                  });
-                                },
-                                icon: const Icon(Icons.delete, size: 20),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                      Text(
-                        work['company'],
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: AppColors.textPrimary,
                         ),
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '${work['startDate']} - ${work['endDate']}',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                      if (work['description'].isNotEmpty) ...[
-                        const SizedBox(height: 8),
-                        Text(
-                          work['description'],
-                          style: Theme.of(context).textTheme.bodySmall
-                              ?.copyWith(color: AppColors.textSecondary),
-                          maxLines: 3,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
-                    ],
+                    );
+                  })),
+                ],
+              ),
+            if (_workExperiences.isNotEmpty) ...[
+              const SizedBox(height: 6),
+              SizedBox(
+                width: double.infinity,
+                height: 40,
+                child: ElevatedButton(
+                  onPressed: _addWorkExperience,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: AppColors.primary,
                   ),
-                );
-              })),
+                  child: const Icon(Icons.add, size: 24),
+                ),
+              ),
+            ],
             const SizedBox(height: 40),
             SizedBox(
               width: double.infinity,
@@ -327,61 +523,92 @@ class _WorkExperienceDialogState extends State<_WorkExperienceDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: Text(
-        widget.workExperience == null
-            ? 'Add Work Experience'
-            : 'Edit Work Experience',
-      ),
-      content: SingleChildScrollView(
-        child: Form(
-          key: _formKey,
+    return Dialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24.0),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 600),
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              CustomTextField(
-                controller: _companyController,
-                label: 'Company',
-                validator: (v) => v?.isEmpty == true ? 'Required' : null,
+              Text(
+                widget.workExperience == null
+                    ? 'Add Work Experience'
+                    : 'Edit Work Experience',
+                style: Theme.of(context).textTheme.headlineSmall,
               ),
               const SizedBox(height: 16),
-              CustomTextField(
-                controller: _titleController,
-                label: 'Job Title',
-                validator: (v) => v?.isEmpty == true ? 'Required' : null,
+              Form(
+                key: _formKey,
+                child: SingleChildScrollView(
+                  child: Column(
+                    children: [
+                      CustomTextField(
+                        controller: _companyController,
+                        label: 'Company',
+                        hint: 'e.g., Google',
+                        validator: (v) =>
+                            v?.isEmpty == true ? 'Required' : null,
+                      ),
+                      const SizedBox(height: 16),
+                      CustomTextField(
+                        controller: _titleController,
+                        label: 'Job Title',
+                        hint: 'e.g., Software Engineer',
+                        validator: (v) =>
+                            v?.isEmpty == true ? 'Required' : null,
+                      ),
+                      const SizedBox(height: 16),
+                      CustomTextField(
+                        controller: _startDateController,
+                        label: 'Start Date',
+                        hint: 'e.g., Jan 2022',
+                        validator: (v) =>
+                            v?.isEmpty == true ? 'Required' : null,
+                      ),
+                      const SizedBox(height: 16),
+                      CustomTextField(
+                        controller: _endDateController,
+                        label: 'End Date',
+                        hint: 'e.g., Present or Dec 2023',
+                        validator: (v) =>
+                            v?.isEmpty == true ? 'Required' : null,
+                      ),
+                      const SizedBox(height: 16),
+                      CustomTextField(
+                        controller: _descriptionController,
+                        label: 'Description',
+                        hint: 'Brief description of your role and achievements',
+                        maxLines: 3,
+                      ),
+                    ],
+                  ),
+                ),
               ),
-              const SizedBox(height: 16),
-              CustomTextField(
-                controller: _startDateController,
-                label: 'Start Date',
-                hint: 'e.g., Jan 2020',
-                validator: (v) => v?.isEmpty == true ? 'Required' : null,
-              ),
-              const SizedBox(height: 16),
-              CustomTextField(
-                controller: _endDateController,
-                label: 'End Date',
-                hint: 'e.g., Dec 2024 or Present',
-                validator: (v) => v?.isEmpty == true ? 'Required' : null,
-              ),
-              const SizedBox(height: 16),
-              CustomTextField(
-                controller: _descriptionController,
-                label: 'Description',
-                hint: 'Brief description of your role and achievements',
-                maxLines: 3,
+              const SizedBox(height: 24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Cancel'),
+                  ),
+                  const SizedBox(width: 8),
+                  ElevatedButton(
+                    onPressed: _save,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                    ),
+                    child: const Text('Save'),
+                  ),
+                ],
               ),
             ],
           ),
         ),
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel'),
-        ),
-        ElevatedButton(onPressed: _save, child: const Text('Save')),
-      ],
     );
   }
 }

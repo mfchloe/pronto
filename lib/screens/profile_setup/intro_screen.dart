@@ -5,9 +5,9 @@ import 'package:pronto/constants.dart';
 import 'skills_screen.dart';
 
 class IntroScreen extends StatefulWidget {
-  final String userEmail;
+  final String? userId;
 
-  const IntroScreen({super.key, required this.userEmail});
+  const IntroScreen({super.key, required this.userId});
 
   @override
   State<IntroScreen> createState() => _IntroScreenState();
@@ -17,6 +17,14 @@ class _IntroScreenState extends State<IntroScreen> {
   final _formKey = GlobalKey<FormState>();
   final _introController = TextEditingController();
   bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _introController.addListener(() {
+      setState(() {}); // This will now properly trigger a rebuild
+    });
+  }
 
   @override
   void dispose() {
@@ -30,17 +38,19 @@ class _IntroScreenState extends State<IntroScreen> {
     try {
       await FirebaseFirestore.instance
           .collection('users')
-          .doc(widget.userEmail)
+          .doc(widget.userId)
           .set({
             'selfIntroduction': {'introduction': _introController.text},
             'completedSteps': 3, // Assuming this is step 3 in your flow
             'updatedAt': FieldValue.serverTimestamp(),
           }, SetOptions(merge: true));
 
+      if (!mounted) return;
+
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => SkillsScreen(userEmail: widget.userEmail),
+          builder: (context) => SkillsScreen(userId: widget.userId),
         ),
       );
     } catch (e) {
@@ -57,12 +67,9 @@ class _IntroScreenState extends State<IntroScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        automaticallyImplyLeading: false,
         backgroundColor: Colors.transparent,
         elevation: 0,
-        title: const CustomProgressIndicator(
-          currentStep: 3,
-        ), // Adjust step number as needed
+        title: const CustomProgressIndicator(currentStep: 5),
         centerTitle: true,
       ),
       body: SingleChildScrollView(
@@ -89,7 +96,6 @@ class _IntroScreenState extends State<IntroScreen> {
               const SizedBox(height: 32),
               _buildIntroductionField(),
               const SizedBox(height: 24),
-              _buildCharacterCount(),
               const SizedBox(height: 40),
               SizedBox(
                 width: double.infinity,
@@ -129,6 +135,9 @@ class _IntroScreenState extends State<IntroScreen> {
   }
 
   Widget _buildIntroductionField() {
+    final currentLength =
+        _introController.text.length; // Store the length in a variable
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -178,20 +187,16 @@ class _IntroScreenState extends State<IntroScreen> {
             },
           ),
         ),
-      ],
-    );
-  }
-
-  Widget _buildCharacterCount() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.end,
-      children: [
-        Text(
-          '${_introController.text.length}/500',
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: _introController.text.length > 450
-                ? Colors.orange
-                : AppColors.textSecondary,
+        const SizedBox(height: 8),
+        Align(
+          alignment: Alignment.centerRight,
+          child: Text(
+            '$currentLength/500', // Use the stored variable instead of accessing controller directly
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: currentLength > 450
+                  ? Colors.orange
+                  : AppColors.textSecondary,
+            ),
           ),
         ),
       ],
