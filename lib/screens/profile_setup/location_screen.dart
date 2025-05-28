@@ -6,9 +6,9 @@ import 'package:pronto/constants.dart';
 import 'intro_screen.dart';
 
 class LocationScreen extends StatefulWidget {
-  final String userEmail;
+  final String? userId;
 
-  const LocationScreen({super.key, required this.userEmail});
+  const LocationScreen({super.key, required this.userId});
 
   @override
   State<LocationScreen> createState() => _LocationScreenState();
@@ -33,7 +33,7 @@ class _LocationScreenState extends State<LocationScreen> {
     try {
       await FirebaseFirestore.instance
           .collection('users')
-          .doc(widget.userEmail)
+          .doc(widget.userId)
           .update({
             'location': {
               'address': _addressController.text,
@@ -43,10 +43,12 @@ class _LocationScreenState extends State<LocationScreen> {
             'updatedAt': FieldValue.serverTimestamp(),
           });
 
+      if (!mounted) return;
+
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => IntroScreen(userEmail: widget.userEmail),
+          builder: (context) => IntroScreen(userId: widget.userId),
         ),
       );
     } catch (e) {

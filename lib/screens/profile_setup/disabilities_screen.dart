@@ -5,9 +5,9 @@ import 'package:pronto/constants.dart';
 import 'location_screen.dart';
 
 class DisabilityScreen extends StatefulWidget {
-  final String userEmail;
+  final String? userId;
 
-  const DisabilityScreen({super.key, required this.userEmail});
+  const DisabilityScreen({super.key, required this.userId});
 
   @override
   State<DisabilityScreen> createState() => _DisabilityScreenState();
@@ -37,17 +37,19 @@ class _DisabilityScreenState extends State<DisabilityScreen> {
     try {
       await FirebaseFirestore.instance
           .collection('users')
-          .doc(widget.userEmail)
+          .doc(widget.userId)
           .update({
             'disabilities': _selectedDisabilities,
             'completedSteps': 3,
             'updatedAt': FieldValue.serverTimestamp(),
           });
 
+      if (!mounted) return;
+
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => LocationScreen(userEmail: widget.userEmail),
+          builder: (context) => LocationScreen(userId: widget.userId),
         ),
       );
     } catch (e) {

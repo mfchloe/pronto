@@ -1,118 +1,217 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../widgets/progress_indicator.dart';
+import '../../widgets/custom_text_field.dart';
 import 'package:pronto/constants.dart';
-// import '../home_screen.dart';
+import 'package:flutter_slidable/flutter_slidable.dart';
+import '../home_screen.dart';
 
-class AwardScreen extends StatefulWidget {
-  final String userEmail;
+class AwardsScreen extends StatefulWidget {
+  final String? userId;
 
-  const AwardScreen({super.key, required this.userEmail});
+  const AwardsScreen({super.key, required this.userId});
 
   @override
-  State<AwardScreen> createState() => _AwardScreenState();
+  State<AwardsScreen> createState() => _AwardsScreenState();
 }
 
-class _AwardScreenState extends State<AwardScreen>
-    with TickerProviderStateMixin {
-  late AnimationController _scaleController;
-  late AnimationController _fadeController;
-  late AnimationController _confettiController;
-  late Animation<double> _scaleAnimation;
-  late Animation<double> _fadeAnimation;
-
+class _AwardsScreenState extends State<AwardsScreen> {
+  List<Map<String, dynamic>> _awards = [];
   bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
-
-    _scaleController = AnimationController(
-      duration: const Duration(milliseconds: 800),
-      vsync: this,
-    );
-
-    _fadeController = AnimationController(
-      duration: const Duration(milliseconds: 1200),
-      vsync: this,
-    );
-
-    _confettiController = AnimationController(
-      duration: const Duration(milliseconds: 2000),
-      vsync: this,
-    );
-
-    _scaleAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _scaleController, curve: Curves.elasticOut),
-    );
-
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _fadeController, curve: Curves.easeInOut),
-    );
-
-    _startAnimations();
-    _markOnboardingComplete();
+    _loadAwardsData();
   }
 
-  @override
-  void dispose() {
-    _scaleController.dispose();
-    _fadeController.dispose();
-    _confettiController.dispose();
-    super.dispose();
+  Future<void> _loadAwardsData() async {
+    try {
+      final awardsSnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(widget.userId)
+          .collection('awards')
+          .get();
+
+      if (awardsSnapshot.docs.isNotEmpty) {
+        setState(() {
+          _awards = awardsSnapshot.docs.map((doc) {
+            final data = doc.data();
+            data['id'] = doc.id;
+            return data;
+          }).toList();
+        });
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error loading awards data: $e')));
+    }
   }
 
-  void _startAnimations() {
-    Future.delayed(const Duration(milliseconds: 300), () {
-      _scaleController.forward();
-    });
+  void _addAward() {
+    showDialog(
+      context: context,
+      builder: (context) => _AwardDialog(
+        onSave: (award) async {
+          try {
+            final docRef = await FirebaseFirestore.instance
+                .collection('users')
+                .doc(widget.userId)
+                .collection('awards')
+                .add({
+                  ...award,
+                  'createdAt': FieldValue.serverTimestamp(),
+                  'updatedAt': FieldValue.serverTimestamp(),
+                });
 
-    Future.delayed(const Duration(milliseconds: 600), () {
-      _fadeController.forward();
-    });
-
-    Future.delayed(const Duration(milliseconds: 800), () {
-      _confettiController.forward();
-    });
+            setState(() {
+              award['id'] = docRef.id;
+              _awards.add(award);
+            });
+          } catch (e) {
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text('Error adding award: $e')));
+          }
+        },
+      ),
+    );
   }
 
-  Future<void> _markOnboardingComplete() async {
+  void _editAward(int index) {
+    showDialog(
+      context: context,
+      builder: (context) => _AwardDialog(
+        award: _awards[index],
+        onSave: (award) async {
+          try {
+            await FirebaseFirestore.instance
+                .collection('users')
+                .doc(widget.userId)
+                .collection('awards')
+                .doc(_awards[index]['id'])
+                .update({...award, 'updatedAt': FieldValue.serverTimestamp()});
+
+            setState(() {
+              award['id'] = _awards[index]['id'];
+              _awards[index] = award;
+            });
+          } catch (e) {
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text('Error updating award: $e')));
+          }
+        },
+      ),
+    );
+  }
+
+  Future<void> _deleteAward(int index) async {
     try {
       await FirebaseFirestore.instance
           .collection('users')
-          .doc(widget.userEmail)
-          .update({
-            'onboardingCompleted': true,
-            'completedSteps': 12,
-            'profileCompletedAt': FieldValue.serverTimestamp(),
-            'updatedAt': FieldValue.serverTimestamp(),
-          });
+          .doc(widget.userId)
+          .collection('awards')
+          .doc(_awards[index]['id'])
+          .delete();
+
+      setState(() {
+        _awards.removeAt(index);
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Award deleted successfully')),
+      );
     } catch (e) {
-      print('Error marking onboarding complete: $e');
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error deleting award: $e')));
     }
   }
 
-  Future<void> _navigateToHome() async {
+  Future<void> _saveToFirebase() async {
     setState(() => _isLoading = true);
 
-    // Add a small delay for better UX
-    await Future.delayed(const Duration(milliseconds: 500));
+    try {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(widget.userId)
+          .update({
+            'completedSteps': 12,
+            'updatedAt': FieldValue.serverTimestamp(),
+          });
 
-    if (mounted) {
-      // Replace with your actual home screen navigation
-      // Navigator.pushAndRemoveUntil(
-      //   context,
-      //   MaterialPageRoute(
-      //     builder: (context) => HomeScreen(userEmail: widget.userEmail),
-      //   ),
-      //   (route) => false,
-      // );
+      if (!mounted) return;
 
-      // Temporary navigation - replace with your home screen
-      Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => HomeScreen(userId: widget.userId),
+        ),
+      );
+
+      // For now, show completion message
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Profile setup completed successfully!')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error saving data: $e')));
+    } finally {
+      setState(() => _isLoading = false);
     }
+  }
 
-    setState(() => _isLoading = false);
+  void _showDeleteOption(BuildContext context, int index) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(24),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Delete "${_awards[index]['title']}"?',
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Cancel'),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      _deleteAward(index);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red,
+                      foregroundColor: Colors.white,
+                    ),
+                    child: const Text('Delete'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -122,222 +221,367 @@ class _AwardScreenState extends State<AwardScreen>
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        automaticallyImplyLeading: false,
         title: const CustomProgressIndicator(currentStep: 12),
         centerTitle: true,
       ),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            children: [
-              Expanded(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    // Animated Trophy/Award Icon
-                    ScaleTransition(
-                      scale: _scaleAnimation,
-                      child: Container(
-                        width: 120,
-                        height: 120,
-                        decoration: BoxDecoration(
-                          color: AppColors.primary,
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: AppColors.primary.withValues(alpha: 77),
-                              blurRadius: 20,
-                              spreadRadius: 0,
-                              offset: const Offset(0, 8),
-                            ),
-                          ],
-                        ),
-                        child: const Icon(
-                          Icons.emoji_events,
-                          size: 60,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 40),
-
-                    // Animated Title
-                    FadeTransition(
-                      opacity: _fadeAnimation,
-                      child: Text(
-                        'Congratulations!',
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Awards & Achievements',
                         style: Theme.of(context).textTheme.headlineLarge
                             ?.copyWith(
                               color: AppColors.textPrimary,
-                              fontSize: 28,
-                              fontWeight: FontWeight.bold,
+                              fontSize: 24,
                             ),
-                        textAlign: TextAlign.center,
                       ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Add your awards, honors, and achievements',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 32),
+            if (_awards.isEmpty)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(32),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: AppColors.textSecondary.withValues(alpha: 51),
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    Icon(
+                      Icons.emoji_events_outlined,
+                      size: 48,
+                      color: AppColors.textSecondary,
                     ),
-
                     const SizedBox(height: 16),
-
-                    // Animated Subtitle
-                    FadeTransition(
-                      opacity: _fadeAnimation,
-                      child: Text(
-                        'Your profile is now complete',
-                        style: Theme.of(context).textTheme.headlineSmall
-                            ?.copyWith(
-                              color: AppColors.textPrimary,
-                              fontSize: 20,
-                              fontWeight: FontWeight.w600,
-                            ),
-                        textAlign: TextAlign.center,
+                    Text(
+                      'No awards added yet',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: AppColors.textSecondary,
                       ),
                     ),
-
-                    const SizedBox(height: 24),
-
-                    // Animated Description
-                    FadeTransition(
-                      opacity: _fadeAnimation,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 32),
-                        child: Text(
-                          'You\'re all set! Your professional profile showcases your skills, experience, and achievements. Start exploring opportunities and connecting with others.',
-                          style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(
-                                color: AppColors.textSecondary,
-                                height: 1.5,
-                              ),
-                          textAlign: TextAlign.center,
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 40,
+                      child: ElevatedButton(
+                        onPressed: _addAward,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          foregroundColor: AppColors.primary,
                         ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 40),
-
-                    // Achievement Stats
-                    FadeTransition(
-                      opacity: _fadeAnimation,
-                      child: Container(
-                        padding: const EdgeInsets.all(24),
-                        decoration: BoxDecoration(
-                          color: AppColors.surface,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: AppColors.textSecondary.withOpacity(0.1),
-                          ),
-                        ),
-                        child: Column(
-                          children: [
-                            Text(
-                              'Profile Completion',
-                              style: Theme.of(context).textTheme.bodyLarge
-                                  ?.copyWith(
-                                    color: AppColors.textPrimary,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                            ),
-                            const SizedBox(height: 12),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceAround,
-                              children: [
-                                _buildStatItem(
-                                  context,
-                                  Icons.person,
-                                  'Profile',
-                                  'Complete',
-                                ),
-                                _buildStatItem(
-                                  context,
-                                  Icons.work,
-                                  'Experience',
-                                  'Added',
-                                ),
-                                _buildStatItem(
-                                  context,
-                                  Icons.star,
-                                  'Skills',
-                                  'Showcased',
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
+                        child: const Icon(Icons.add, size: 24),
                       ),
                     ),
                   ],
                 ),
+              )
+            else
+              Column(
+                children: [
+                  ...(_awards.asMap().entries.map((entry) {
+                    final index = entry.key;
+                    final award = entry.value;
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 16),
+                      child: Slidable(
+                        key: Key(award['id'] ?? index.toString()),
+                        endActionPane: ActionPane(
+                          motion: const DrawerMotion(),
+                          extentRatio: 0.25,
+                          children: [
+                            SlidableAction(
+                              onPressed: (context) =>
+                                  _showDeleteOption(context, index),
+                              backgroundColor: Colors.red,
+                              foregroundColor: Colors.white,
+                              icon: Icons.delete,
+                              borderRadius: const BorderRadius.only(
+                                topLeft: Radius.circular(0),
+                                bottomLeft: Radius.circular(0),
+                                topRight: Radius.circular(12),
+                                bottomRight: Radius.circular(12),
+                              ),
+                            ),
+                          ],
+                        ),
+                        child: GestureDetector(
+                          onTap: () => _editAward(index),
+                          child: Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: AppColors.surface,
+                              borderRadius: const BorderRadius.only(
+                                topLeft: Radius.circular(12),
+                                bottomLeft: Radius.circular(12),
+                                topRight: Radius.circular(0),
+                                bottomRight: Radius.circular(0),
+                              ),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        award['title'],
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .bodyLarge
+                                            ?.copyWith(
+                                              color: AppColors.textPrimary,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                      ),
+                                    ),
+                                    IconButton(
+                                      onPressed: () => _editAward(index),
+                                      icon: const Icon(Icons.edit, size: 20),
+                                      color: AppColors.primary,
+                                    ),
+                                  ],
+                                ),
+                                Row(
+                                  children: [
+                                    Icon(
+                                      Icons.calendar_month,
+                                      size: 16,
+                                      color: AppColors.textSecondary,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      award['year'].toString(),
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodySmall
+                                          ?.copyWith(
+                                            color: AppColors.textSecondary,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                    ),
+                                  ],
+                                ),
+                                if (award['description'] != null &&
+                                    award['description'].isNotEmpty) ...[
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    award['description'],
+                                    style: Theme.of(context).textTheme.bodySmall
+                                        ?.copyWith(
+                                          color: AppColors.textSecondary,
+                                        ),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  })),
+                ],
               ),
+            if (_awards.isNotEmpty) ...[
+              const SizedBox(height: 6),
+              SizedBox(
+                width: double.infinity,
+                height: 40,
+                child: ElevatedButton(
+                  onPressed: _addAward,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: AppColors.primary,
+                  ),
+                  child: const Icon(Icons.add, size: 24),
+                ),
+              ),
+            ],
+            const SizedBox(height: 40),
+            SizedBox(
+              width: double.infinity,
+              height: 56,
+              child: ElevatedButton(
+                onPressed: _isLoading ? null : _saveToFirebase,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+                child: _isLoading
+                    ? const CircularProgressIndicator(color: Colors.white)
+                    : const Text(
+                        'Finish',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
 
-              // Continue Button
-              FadeTransition(
-                opacity: _fadeAnimation,
-                child: SizedBox(
-                  width: double.infinity,
-                  height: 56,
-                  child: ElevatedButton(
-                    onPressed: _isLoading ? null : _navigateToHome,
+class _AwardDialog extends StatefulWidget {
+  final Map<String, dynamic>? award;
+  final Function(Map<String, dynamic>) onSave;
+
+  const _AwardDialog({this.award, required this.onSave});
+
+  @override
+  State<_AwardDialog> createState() => _AwardDialogState();
+}
+
+class _AwardDialogState extends State<_AwardDialog> {
+  final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _titleController;
+  late final TextEditingController _yearController;
+  late final TextEditingController _descriptionController;
+
+  @override
+  void initState() {
+    super.initState();
+    _titleController = TextEditingController(
+      text: widget.award?['title'] ?? '',
+    );
+    _yearController = TextEditingController(
+      text: widget.award?['year']?.toString() ?? '',
+    );
+    _descriptionController = TextEditingController(
+      text: widget.award?['description'] ?? '',
+    );
+  }
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _yearController.dispose();
+    _descriptionController.dispose();
+    super.dispose();
+  }
+
+  void _save() {
+    if (_formKey.currentState!.validate()) {
+      widget.onSave({
+        'title': _titleController.text,
+        'year': int.parse(_yearController.text),
+        'description': _descriptionController.text,
+      });
+      Navigator.pop(context);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24.0),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 600),
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                widget.award == null ? 'Add Award' : 'Edit Award',
+                style: Theme.of(context).textTheme.headlineSmall,
+              ),
+              const SizedBox(height: 16),
+              Form(
+                key: _formKey,
+                child: SingleChildScrollView(
+                  child: Column(
+                    children: [
+                      CustomTextField(
+                        controller: _titleController,
+                        label: 'Award Title',
+                        hint: 'e.g., Dean\'s List',
+                        validator: (v) =>
+                            v?.isEmpty == true ? 'Required' : null,
+                      ),
+                      const SizedBox(height: 16),
+                      CustomTextField(
+                        controller: _yearController,
+                        label: 'Year',
+                        hint: 'e.g., 2023',
+                        keyboardType: TextInputType.number,
+                        validator: (v) {
+                          if (v?.isEmpty == true) return 'Required';
+                          final year = int.tryParse(v!);
+                          if (year == null) return 'Please enter a valid year';
+                          final currentYear = DateTime.now().year;
+                          if (year < 1900 || year > currentYear + 10) {
+                            return 'Please enter a valid year';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      CustomTextField(
+                        controller: _descriptionController,
+                        label: 'Description',
+                        hint: 'Brief description of the award or achievement',
+                        maxLines: 3,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Cancel'),
+                  ),
+                  const SizedBox(width: 8),
+                  ElevatedButton(
+                    onPressed: _save,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
                       foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
                     ),
-                    child: _isLoading
-                        ? const CircularProgressIndicator(color: Colors.white)
-                        : const Text(
-                            'Get Started',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
+                    child: const Text('Save'),
                   ),
-                ),
+                ],
               ),
             ],
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildStatItem(
-    BuildContext context,
-    IconData icon,
-    String title,
-    String status,
-  ) {
-    return Column(
-      children: [
-        Container(
-          width: 48,
-          height: 48,
-          decoration: BoxDecoration(
-            color: AppColors.primary.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Icon(icon, color: AppColors.primary, size: 24),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          title,
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: AppColors.textSecondary,
-            fontSize: 12,
-          ),
-        ),
-        Text(
-          status,
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: AppColors.primary,
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ],
     );
   }
 }

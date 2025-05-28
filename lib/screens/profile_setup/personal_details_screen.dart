@@ -7,9 +7,9 @@ import 'package:pronto/constants.dart';
 import 'designation_screen.dart';
 
 class PersonalDetailsScreen extends StatefulWidget {
-  final String userEmail;
+  final String? userId;
 
-  const PersonalDetailsScreen({super.key, required this.userEmail});
+  const PersonalDetailsScreen({super.key, required this.userId});
 
   @override
   State<PersonalDetailsScreen> createState() => _PersonalDetailsScreenState();
@@ -75,26 +75,26 @@ class _PersonalDetailsScreenState extends State<PersonalDetailsScreen> {
     try {
       await FirebaseFirestore.instance
           .collection('users')
-          .doc(widget.userEmail)
+          .doc(widget.userId)
           .set({
-            'personalDetails': {
-              'name': _nameController.text,
-              'preferredName': _preferredNameController.text,
-              'email': widget.userEmail,
-              'phoneNumber': _phoneController.text,
-              'age': _selectedAge,
-              'gender': _selectedGender,
-              'race': _selectedRace,
-              'languages': _languages,
-            },
+            'name': _nameController.text,
+            'preferredName': _preferredNameController.text,
+            'email': widget.userId,
+            'phoneNumber': _phoneController.text,
+            'age': _selectedAge,
+            'gender': _selectedGender,
+            'race': _selectedRace,
+            'languages': _languages,
             'completedSteps': 1,
             'updatedAt': FieldValue.serverTimestamp(),
           }, SetOptions(merge: true));
 
+      if (!mounted) return;
+
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => DesignationScreen(userEmail: widget.userEmail),
+          builder: (context) => DesignationScreen(userId: widget.userId),
         ),
       );
     } catch (e) {
@@ -155,7 +155,11 @@ class _PersonalDetailsScreenState extends State<PersonalDetailsScreen> {
                           Navigator.pop(context);
                         }
                       : null,
-                  child: const Text('Add'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: Text('Add', style: TextStyle(color: Colors.white)),
                 ),
               ],
             );
@@ -401,6 +405,7 @@ class _PersonalDetailsScreenState extends State<PersonalDetailsScreen> {
               onPressed: _addLanguage,
               icon: const Icon(Icons.add, size: 16),
               label: const Text('Add'),
+              style: TextButton.styleFrom(foregroundColor: AppColors.primary),
             ),
           ],
         ),

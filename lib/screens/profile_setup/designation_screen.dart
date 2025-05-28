@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:pronto/constants.dart';
-import 'disabilities_screen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../widgets/custom_dropdown_field.dart';
 import '../../widgets/progress_indicator.dart';
+import 'disabilities_screen.dart';
 
 class DesignationScreen extends StatefulWidget {
-  final String userEmail;
+  final String? userId;
 
-  const DesignationScreen({super.key, required this.userEmail});
+  const DesignationScreen({super.key, required this.userId});
 
   @override
   State<DesignationScreen> createState() => _DesignationScreenState();
@@ -20,9 +20,9 @@ class _DesignationScreenState extends State<DesignationScreen> {
   bool _isLoading = false;
 
   final List<String> _designations = [
-    'Primary School Student',
     'Secondary School Student',
     'Junior College Student',
+    'ITE Student',
     'Polytechnic Student',
     'University Student',
     'Recent Graduate',
@@ -39,17 +39,19 @@ class _DesignationScreenState extends State<DesignationScreen> {
     try {
       await FirebaseFirestore.instance
           .collection('users')
-          .doc(widget.userEmail)
+          .doc(widget.userId)
           .update({
             'designation': _selectedDesignation,
             'completedSteps': 2,
             'updatedAt': FieldValue.serverTimestamp(),
           });
 
+      if (!mounted) return;
+
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => DisabilityScreen(userEmail: widget.userEmail),
+          builder: (context) => DisabilityScreen(userId: widget.userId),
         ),
       );
     } catch (e) {
