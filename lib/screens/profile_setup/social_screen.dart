@@ -87,7 +87,7 @@ class _SocialsScreenState extends State<SocialsScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                'Link your professional and portfolio accounts (optional)',
+                'Link your professional and portfolio accounts',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: AppColors.textSecondary,
                 ),

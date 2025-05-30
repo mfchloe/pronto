@@ -198,11 +198,33 @@ class _ResumeScreenState extends State<ResumeScreen> {
             child: const Text('Cancel'),
           ),
           TextButton(
-            onPressed: () {
+            onPressed: () async {
+              final fileUrl = _resumes[type]?['url'];
+
               setState(() {
                 _resumes.remove(type);
               });
+
               Navigator.pop(context);
+
+              // Delete from Firebase Storage
+              if (fileUrl != null && fileUrl.isNotEmpty) {
+                try {
+                  final ref = FirebaseStorage.instance.refFromURL(fileUrl);
+                  await ref.delete();
+                  print('File: $fileUrl deleted successfully');
+                } catch (e) {
+                  print('Error deleting file: $e');
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Error deleting file: $e'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                }
+              }
             },
             child: const Text('Remove', style: TextStyle(color: Colors.red)),
           ),

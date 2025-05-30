@@ -50,6 +50,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
       // Save user document to Firestore
       await FirebaseFirestore.instance.collection('users').doc(userId).set({
         'email': user?.email,
+        'completedSteps': 1,
         'createdAt': FieldValue.serverTimestamp(),
       });
 

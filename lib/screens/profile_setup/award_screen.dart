@@ -61,6 +61,7 @@ class _AwardsScreenState extends State<AwardsScreen> {
                 .collection('awards')
                 .add({
                   ...award,
+                  'completedSteps': 12,
                   'createdAt': FieldValue.serverTimestamp(),
                   'updatedAt': FieldValue.serverTimestamp(),
                 });
@@ -138,7 +139,7 @@ class _AwardsScreenState extends State<AwardsScreen> {
           .collection('users')
           .doc(widget.userId)
           .update({
-            'completedSteps': 12,
+            'completedSteps': 13,
             'updatedAt': FieldValue.serverTimestamp(),
           });
 

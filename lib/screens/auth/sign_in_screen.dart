@@ -32,14 +32,19 @@ class _SigninScreenState extends State<SigninScreen> {
     });
 
     try {
-      await FirebaseAuth.instance.signInWithEmailAndPassword(
-        email: _emailController.text.trim(),
-        password: _passwordController.text,
-      );
+      UserCredential userCredential = await FirebaseAuth.instance
+          .signInWithEmailAndPassword(
+            email: _emailController.text.trim(),
+            password: _passwordController.text,
+          );
 
       if (mounted) {
         // Navigate to main app
-        Navigator.pushReplacementNamed(context, '/home');
+        Navigator.pushReplacementNamed(
+          context,
+          '/home',
+          arguments: userCredential.user!.uid,
+        );
       }
     } on FirebaseAuthException catch (e) {
       String message = 'An error occurred. Please try again.';
