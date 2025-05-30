@@ -40,7 +40,7 @@ class _IntroScreenState extends State<IntroScreen> {
           .collection('users')
           .doc(widget.userId)
           .set({
-            'selfIntroduction': {'introduction': _introController.text},
+            'selfIntroduction': _introController.text,
             'completedSteps': 3, // Assuming this is step 3 in your flow
             'updatedAt': FieldValue.serverTimestamp(),
           }, SetOptions(merge: true));

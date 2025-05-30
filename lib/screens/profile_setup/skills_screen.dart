@@ -217,15 +217,14 @@ class _SkillsScreenState extends State<SkillsScreen> {
                   ),
                   Padding(
                     padding: const EdgeInsets.only(right: 8.0),
-                    child: ElevatedButton(
+                    child: TextButton(
                       onPressed: _addCustomSkill,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
+                      style: TextButton.styleFrom(
                         minimumSize: const Size(60, 40),
                       ),
                       child: const Text(
                         'Add',
-                        style: TextStyle(color: Colors.white),
+                        style: TextStyle(color: AppColors.primary),
                       ),
                     ),
                   ),
