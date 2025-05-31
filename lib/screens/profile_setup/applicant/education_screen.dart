@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../../../widgets/progress_indicator.dart';
-import '../../widgets/custom_text_field.dart';
+import 'package:pronto/widgets/progress_indicator.dart';
+import 'package:pronto/widgets/custom_text_field.dart';
 import 'package:pronto/constants.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import 'work_screen.dart';

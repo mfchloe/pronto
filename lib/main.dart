@@ -5,18 +5,18 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:pronto/screens/onboarding/splash_screen.dart';
 import 'package:pronto/screens/onboarding/welcome_screen.dart';
 import 'package:pronto/screens/home_screen.dart';
-import 'package:pronto/screens/profile_setup/personal_details_screen.dart';
-import 'package:pronto/screens/profile_setup/designation_screen.dart';
-import 'package:pronto/screens/profile_setup/disabilities_screen.dart';
-import 'package:pronto/screens/profile_setup/location_screen.dart';
-import 'package:pronto/screens/profile_setup/intro_screen.dart';
-import 'package:pronto/screens/profile_setup/skills_screen.dart';
-import 'package:pronto/screens/profile_setup/social_screen.dart';
-import 'package:pronto/screens/profile_setup/resume_screen.dart';
-import 'package:pronto/screens/profile_setup/education_screen.dart';
-import 'package:pronto/screens/profile_setup/work_screen.dart';
-import 'package:pronto/screens/profile_setup/project_screen.dart';
-import 'package:pronto/screens/profile_setup/award_screen.dart';
+import 'package:pronto/screens/profile_setup/applicant/personal_details_screen.dart';
+import 'package:pronto/screens/profile_setup/applicant/designation_screen.dart';
+import 'package:pronto/screens/profile_setup/applicant/disabilities_screen.dart';
+import 'package:pronto/screens/profile_setup/applicant/location_screen.dart';
+import 'package:pronto/screens/profile_setup/applicant/intro_screen.dart';
+import 'package:pronto/screens/profile_setup/applicant/skills_screen.dart';
+import 'package:pronto/screens/profile_setup/applicant/social_screen.dart';
+import 'package:pronto/screens/profile_setup/applicant/resume_screen.dart';
+import 'package:pronto/screens/profile_setup/applicant/education_screen.dart';
+import 'package:pronto/screens/profile_setup/applicant/work_screen.dart';
+import 'package:pronto/screens/profile_setup/applicant/project_screen.dart';
+import 'package:pronto/screens/profile_setup/applicant/award_screen.dart';
 import 'firebase_options.dart';
 
 void main() async {
@@ -32,6 +32,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'pronto',
+      navigatorKey: NavigationHelper.navigatorKey,
       theme: ThemeData(
         primaryColor: Color(0xFF0057B7),
         colorScheme: ColorScheme.fromSwatch().copyWith(

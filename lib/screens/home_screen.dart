@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'profile_setup/project_screen.dart';
+import 'profile_setup/applicant/project_screen.dart';
 import 'onboarding/welcome_screen.dart';
 
 class HomeScreen extends StatelessWidget {

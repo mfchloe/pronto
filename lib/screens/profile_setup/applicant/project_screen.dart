@@ -1,43 +1,45 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../../../widgets/progress_indicator.dart';
-import '../../widgets/custom_text_field.dart';
+import 'package:pronto/widgets/progress_indicator.dart';
+import 'package:pronto/widgets/custom_text_field.dart';
 import 'package:pronto/constants.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
-import '../home_screen.dart';
+import 'award_screen.dart';
 
-class AwardsScreen extends StatefulWidget {
+class ProjectExperienceScreen extends StatefulWidget {
   final String? userId;
 
-  const AwardsScreen({super.key, required this.userId});
+  const ProjectExperienceScreen({super.key, required this.userId});
 
   @override
-  State<AwardsScreen> createState() => _AwardsScreenState();
+  State<ProjectExperienceScreen> createState() =>
+      _ProjectExperienceScreenState();
 }
 
-class _AwardsScreenState extends State<AwardsScreen> {
-  List<Map<String, dynamic>> _awards = [];
+class _ProjectExperienceScreenState extends State<ProjectExperienceScreen> {
+  List<Map<String, dynamic>> _projects = [];
   bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
-    _loadAwardsData();
+    _loadProjectData();
   }
 
-  Future<void> _loadAwardsData() async {
+  Future<void> _loadProjectData() async {
     try {
-      final awardsSnapshot = await FirebaseFirestore.instance
+      // Load existing project data from subcollection
+      final projectSnapshot = await FirebaseFirestore.instance
           .collection('users')
           .doc(widget.userId)
-          .collection('awards')
+          .collection('projects')
           .get();
 
-      if (awardsSnapshot.docs.isNotEmpty) {
+      if (projectSnapshot.docs.isNotEmpty) {
         setState(() {
-          _awards = awardsSnapshot.docs.map((doc) {
+          _projects = projectSnapshot.docs.map((doc) {
             final data = doc.data();
-            data['id'] = doc.id;
+            data['id'] = doc.id; // Store document ID for updates/deletes
             return data;
           }).toList();
         });
@@ -45,89 +47,97 @@ class _AwardsScreenState extends State<AwardsScreen> {
     } catch (e) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Error loading awards data: $e')));
+      ).showSnackBar(SnackBar(content: Text('Error loading project data: $e')));
     }
   }
 
-  void _addAward() {
+  void _addProject() {
     showDialog(
       context: context,
-      builder: (context) => _AwardDialog(
-        onSave: (award) async {
+      builder: (context) => _ProjectDialog(
+        onSave: (project) async {
           try {
+            // Add to Firestore subcollection
             final docRef = await FirebaseFirestore.instance
                 .collection('users')
                 .doc(widget.userId)
-                .collection('awards')
+                .collection('projects')
                 .add({
-                  ...award,
-                  'completedSteps': 12,
+                  ...project,
                   'createdAt': FieldValue.serverTimestamp(),
                   'updatedAt': FieldValue.serverTimestamp(),
                 });
 
+            // Add to local list with document ID
             setState(() {
-              award['id'] = docRef.id;
-              _awards.add(award);
+              project['id'] = docRef.id;
+              _projects.add(project);
             });
           } catch (e) {
             ScaffoldMessenger.of(
               context,
-            ).showSnackBar(SnackBar(content: Text('Error adding award: $e')));
+            ).showSnackBar(SnackBar(content: Text('Error adding project: $e')));
           }
         },
       ),
     );
   }
 
-  void _editAward(int index) {
+  void _editProject(int index) {
     showDialog(
       context: context,
-      builder: (context) => _AwardDialog(
-        award: _awards[index],
-        onSave: (award) async {
+      builder: (context) => _ProjectDialog(
+        project: _projects[index],
+        onSave: (project) async {
           try {
+            // Update in Firestore subcollection
             await FirebaseFirestore.instance
                 .collection('users')
                 .doc(widget.userId)
-                .collection('awards')
-                .doc(_awards[index]['id'])
-                .update({...award, 'updatedAt': FieldValue.serverTimestamp()});
+                .collection('projects')
+                .doc(_projects[index]['id'])
+                .update({
+                  ...project,
+                  'updatedAt': FieldValue.serverTimestamp(),
+                });
 
+            // Update local list
             setState(() {
-              award['id'] = _awards[index]['id'];
-              _awards[index] = award;
+              project['id'] = _projects[index]['id']; // Keep the same ID
+              _projects[index] = project;
             });
           } catch (e) {
-            ScaffoldMessenger.of(
-              context,
-            ).showSnackBar(SnackBar(content: Text('Error updating award: $e')));
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Error updating project: $e')),
+            );
           }
         },
       ),
     );
   }
 
-  Future<void> _deleteAward(int index) async {
+  Future<void> _deleteProject(int index) async {
     try {
+      // Delete from Firestore subcollection
       await FirebaseFirestore.instance
           .collection('users')
           .doc(widget.userId)
-          .collection('awards')
-          .doc(_awards[index]['id'])
+          .collection('projects')
+          .doc(_projects[index]['id'])
           .delete();
 
+      // Remove from local list
       setState(() {
-        _awards.removeAt(index);
+        _projects.removeAt(index);
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Award deleted successfully')),
+        const SnackBar(content: Text('Project deleted successfully')),
       );
     } catch (e) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Error deleting award: $e')));
+      ).showSnackBar(SnackBar(content: Text('Error deleting project: $e')));
     }
   }
 
@@ -135,11 +145,13 @@ class _AwardsScreenState extends State<AwardsScreen> {
     setState(() => _isLoading = true);
 
     try {
+      // Update user document to mark this step as completed
+      // Adjust the step number based on your flow
       await FirebaseFirestore.instance
           .collection('users')
           .doc(widget.userId)
           .update({
-            'completedSteps': 13,
+            'completedSteps': 11, // Adjust this number
             'updatedAt': FieldValue.serverTimestamp(),
           });
 
@@ -148,13 +160,13 @@ class _AwardsScreenState extends State<AwardsScreen> {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => HomeScreen(userId: widget.userId),
+          builder: (context) => AwardsScreen(userId: widget.userId),
         ),
       );
 
-      // For now, show completion message
+      // For now, just show success message
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Profile setup completed successfully!')),
+        const SnackBar(content: Text('Projects saved successfully!')),
       );
     } catch (e) {
       ScaffoldMessenger.of(
@@ -179,7 +191,7 @@ class _AwardsScreenState extends State<AwardsScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              'Delete "${_awards[index]['title']}"?',
+              'Delete "${_projects[index]['title']}"?',
               style: Theme.of(
                 context,
               ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
@@ -198,7 +210,7 @@ class _AwardsScreenState extends State<AwardsScreen> {
                   child: ElevatedButton(
                     onPressed: () {
                       Navigator.pop(context);
-                      _deleteAward(index);
+                      _deleteProject(index);
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.red,
@@ -222,7 +234,9 @@ class _AwardsScreenState extends State<AwardsScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        title: const CustomProgressIndicator(currentStep: 12),
+        title: const CustomProgressIndicator(
+          currentStep: 11,
+        ), // Adjust step number
         centerTitle: true,
       ),
       body: SingleChildScrollView(
@@ -238,7 +252,7 @@ class _AwardsScreenState extends State<AwardsScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Awards & Achievements',
+                        'Project Experience',
                         style: Theme.of(context).textTheme.headlineLarge
                             ?.copyWith(
                               color: AppColors.textPrimary,
@@ -247,7 +261,7 @@ class _AwardsScreenState extends State<AwardsScreen> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Add your awards, honors, and achievements',
+                        'Add your project experiences',
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           color: AppColors.textSecondary,
                         ),
@@ -258,7 +272,7 @@ class _AwardsScreenState extends State<AwardsScreen> {
               ],
             ),
             const SizedBox(height: 32),
-            if (_awards.isEmpty)
+            if (_projects.isEmpty)
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(32),
@@ -272,13 +286,13 @@ class _AwardsScreenState extends State<AwardsScreen> {
                 child: Column(
                   children: [
                     Icon(
-                      Icons.emoji_events_outlined,
+                      Icons.work_outline,
                       size: 48,
                       color: AppColors.textSecondary,
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      'No awards added yet',
+                      'No projects added yet',
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         color: AppColors.textSecondary,
                       ),
@@ -288,7 +302,7 @@ class _AwardsScreenState extends State<AwardsScreen> {
                       width: double.infinity,
                       height: 40,
                       child: ElevatedButton(
-                        onPressed: _addAward,
+                        onPressed: _addProject,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.white,
                           foregroundColor: AppColors.primary,
@@ -302,13 +316,14 @@ class _AwardsScreenState extends State<AwardsScreen> {
             else
               Column(
                 children: [
-                  ...(_awards.asMap().entries.map((entry) {
+                  // Project list with swipe to delete
+                  ...(_projects.asMap().entries.map((entry) {
                     final index = entry.key;
-                    final award = entry.value;
+                    final project = entry.value;
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 16),
                       child: Slidable(
-                        key: Key(award['id'] ?? index.toString()),
+                        key: Key(project['id'] ?? index.toString()),
                         endActionPane: ActionPane(
                           motion: const DrawerMotion(),
                           extentRatio: 0.25,
@@ -329,7 +344,7 @@ class _AwardsScreenState extends State<AwardsScreen> {
                           ],
                         ),
                         child: GestureDetector(
-                          onTap: () => _editAward(index),
+                          onTap: () => _editProject(index),
                           child: Container(
                             padding: const EdgeInsets.all(16),
                             decoration: BoxDecoration(
@@ -350,7 +365,7 @@ class _AwardsScreenState extends State<AwardsScreen> {
                                   children: [
                                     Expanded(
                                       child: Text(
-                                        award['title'],
+                                        project['title'] ?? '',
                                         style: Theme.of(context)
                                             .textTheme
                                             .bodyLarge
@@ -361,12 +376,38 @@ class _AwardsScreenState extends State<AwardsScreen> {
                                       ),
                                     ),
                                     IconButton(
-                                      onPressed: () => _editAward(index),
+                                      onPressed: () => _editProject(index),
                                       icon: const Icon(Icons.edit, size: 20),
                                       color: AppColors.primary,
                                     ),
                                   ],
                                 ),
+                                if (project['organisation']?.isNotEmpty ==
+                                    true) ...[
+                                  Text(
+                                    project['organisation'],
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodyMedium
+                                        ?.copyWith(
+                                          color: AppColors.textPrimary,
+                                        ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                ],
+                                if (project['description']?.isNotEmpty ==
+                                    true) ...[
+                                  Text(
+                                    project['description'],
+                                    style: Theme.of(context).textTheme.bodySmall
+                                        ?.copyWith(
+                                          color: AppColors.textSecondary,
+                                        ),
+                                    maxLines: 3,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  const SizedBox(height: 8),
+                                ],
                                 Row(
                                   children: [
                                     Icon(
@@ -376,7 +417,7 @@ class _AwardsScreenState extends State<AwardsScreen> {
                                     ),
                                     const SizedBox(width: 4),
                                     Text(
-                                      award['year'].toString(),
+                                      '${project['startDate'] ?? ''} - ${project['endDate'] ?? ''}',
                                       style: Theme.of(context)
                                           .textTheme
                                           .bodySmall
@@ -387,19 +428,6 @@ class _AwardsScreenState extends State<AwardsScreen> {
                                     ),
                                   ],
                                 ),
-                                if (award['description'] != null &&
-                                    award['description'].isNotEmpty) ...[
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    award['description'],
-                                    style: Theme.of(context).textTheme.bodySmall
-                                        ?.copyWith(
-                                          color: AppColors.textSecondary,
-                                        ),
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ],
                               ],
                             ),
                           ),
@@ -409,13 +437,14 @@ class _AwardsScreenState extends State<AwardsScreen> {
                   })),
                 ],
               ),
-            if (_awards.isNotEmpty) ...[
+            // Add Project button (only shows if at least one project is added)
+            if (_projects.isNotEmpty) ...[
               const SizedBox(height: 6),
               SizedBox(
                 width: double.infinity,
                 height: 40,
                 child: ElevatedButton(
-                  onPressed: _addAward,
+                  onPressed: _addProject,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.white,
                     foregroundColor: AppColors.primary,
@@ -440,7 +469,7 @@ class _AwardsScreenState extends State<AwardsScreen> {
                 child: _isLoading
                     ? const CircularProgressIndicator(color: Colors.white)
                     : const Text(
-                        'Finish',
+                        'Continue',
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
@@ -455,40 +484,50 @@ class _AwardsScreenState extends State<AwardsScreen> {
   }
 }
 
-class _AwardDialog extends StatefulWidget {
-  final Map<String, dynamic>? award;
+class _ProjectDialog extends StatefulWidget {
+  final Map<String, dynamic>? project;
   final Function(Map<String, dynamic>) onSave;
 
-  const _AwardDialog({this.award, required this.onSave});
+  const _ProjectDialog({this.project, required this.onSave});
 
   @override
-  State<_AwardDialog> createState() => _AwardDialogState();
+  State<_ProjectDialog> createState() => _ProjectDialogState();
 }
 
-class _AwardDialogState extends State<_AwardDialog> {
+class _ProjectDialogState extends State<_ProjectDialog> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _titleController;
-  late final TextEditingController _yearController;
+  late final TextEditingController _organisationController;
+  late final TextEditingController _startDateController;
+  late final TextEditingController _endDateController;
   late final TextEditingController _descriptionController;
 
   @override
   void initState() {
     super.initState();
     _titleController = TextEditingController(
-      text: widget.award?['title'] ?? '',
+      text: widget.project?['title'] ?? '',
     );
-    _yearController = TextEditingController(
-      text: widget.award?['year']?.toString() ?? '',
+    _organisationController = TextEditingController(
+      text: widget.project?['organisation'] ?? '',
+    );
+    _startDateController = TextEditingController(
+      text: widget.project?['startDate'] ?? '',
+    );
+    _endDateController = TextEditingController(
+      text: widget.project?['endDate'] ?? '',
     );
     _descriptionController = TextEditingController(
-      text: widget.award?['description'] ?? '',
+      text: widget.project?['description'] ?? '',
     );
   }
 
   @override
   void dispose() {
     _titleController.dispose();
-    _yearController.dispose();
+    _organisationController.dispose();
+    _startDateController.dispose();
+    _endDateController.dispose();
     _descriptionController.dispose();
     super.dispose();
   }
@@ -497,7 +536,9 @@ class _AwardDialogState extends State<_AwardDialog> {
     if (_formKey.currentState!.validate()) {
       widget.onSave({
         'title': _titleController.text,
-        'year': int.parse(_yearController.text),
+        'organisation': _organisationController.text,
+        'startDate': _startDateController.text,
+        'endDate': _endDateController.text,
         'description': _descriptionController.text,
       });
       Navigator.pop(context);
@@ -516,7 +557,7 @@ class _AwardDialogState extends State<_AwardDialog> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                widget.award == null ? 'Add Award' : 'Edit Award',
+                widget.project == null ? 'Add Project' : 'Edit Project',
                 style: Theme.of(context).textTheme.headlineSmall,
               ),
               const SizedBox(height: 16),
@@ -527,34 +568,51 @@ class _AwardDialogState extends State<_AwardDialog> {
                     children: [
                       CustomTextField(
                         controller: _titleController,
-                        label: 'Award Title',
-                        hint: 'e.g., Dean\'s List',
+                        label: 'Project Title',
+                        hint: 'e.g., E-commerce Mobile App',
                         validator: (v) =>
                             v?.isEmpty == true ? 'Required' : null,
                       ),
                       const SizedBox(height: 16),
                       CustomTextField(
-                        controller: _yearController,
-                        label: 'Year',
-                        hint: 'e.g., 2023',
-                        keyboardType: TextInputType.number,
-                        validator: (v) {
-                          if (v?.isEmpty == true) return 'Required';
-                          final year = int.tryParse(v!);
-                          if (year == null) return 'Please enter a valid year';
-                          final currentYear = DateTime.now().year;
-                          if (year < 1900 || year > currentYear + 10) {
-                            return 'Please enter a valid year';
-                          }
-                          return null;
-                        },
+                        controller: _organisationController,
+                        label: 'Organisation',
+                        hint: 'e.g., Tech Company Pte Ltd',
+                        validator: (v) =>
+                            v?.isEmpty == true ? 'Required' : null,
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: CustomTextField(
+                              controller: _startDateController,
+                              label: 'Start Date',
+                              hint: 'e.g., Jan 2023',
+                              validator: (v) =>
+                                  v?.isEmpty == true ? 'Required' : null,
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: CustomTextField(
+                              controller: _endDateController,
+                              label: 'End Date',
+                              hint: 'e.g., Dec 2023',
+                              validator: (v) =>
+                                  v?.isEmpty == true ? 'Required' : null,
+                            ),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 16),
                       CustomTextField(
                         controller: _descriptionController,
                         label: 'Description',
-                        hint: 'Brief description of the award or achievement',
-                        maxLines: 3,
+                        hint: 'Describe your project and contributions...',
+                        maxLines: 4,
+                        validator: (v) =>
+                            v?.isEmpty == true ? 'Required' : null,
                       ),
                     ],
                   ),
