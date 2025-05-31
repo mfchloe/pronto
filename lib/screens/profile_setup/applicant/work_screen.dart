@@ -1,114 +1,77 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../../../widgets/progress_indicator.dart';
-import '../../widgets/custom_text_field.dart';
+import 'package:pronto/widgets/progress_indicator.dart';
+import 'package:pronto/widgets/custom_text_field.dart';
 import 'package:pronto/constants.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
-import 'award_screen.dart';
+import 'project_screen.dart';
 
-class ProjectExperienceScreen extends StatefulWidget {
+class WorkExperienceScreen extends StatefulWidget {
   final String? userId;
 
-  const ProjectExperienceScreen({super.key, required this.userId});
+  const WorkExperienceScreen({super.key, required this.userId});
 
   @override
-  State<ProjectExperienceScreen> createState() =>
-      _ProjectExperienceScreenState();
+  State<WorkExperienceScreen> createState() => _WorkExperienceScreenState();
 }
 
-class _ProjectExperienceScreenState extends State<ProjectExperienceScreen> {
-  List<Map<String, dynamic>> _projects = [];
+class _WorkExperienceScreenState extends State<WorkExperienceScreen> {
+  List<Map<String, dynamic>> _workExperiences = [];
   bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
-    _loadProjectData();
+    _loadWorkExperienceData();
   }
 
-  Future<void> _loadProjectData() async {
+  Future<void> _loadWorkExperienceData() async {
     try {
-      // Load existing project data from subcollection
-      final projectSnapshot = await FirebaseFirestore.instance
+      final workSnapshot = await FirebaseFirestore.instance
           .collection('users')
           .doc(widget.userId)
-          .collection('projects')
+          .collection('workExperience')
           .get();
 
-      if (projectSnapshot.docs.isNotEmpty) {
+      if (workSnapshot.docs.isNotEmpty) {
         setState(() {
-          _projects = projectSnapshot.docs.map((doc) {
+          _workExperiences = workSnapshot.docs.map((doc) {
             final data = doc.data();
-            data['id'] = doc.id; // Store document ID for updates/deletes
+            data['id'] = doc.id;
             return data;
           }).toList();
         });
       }
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Error loading project data: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error loading work experience data: $e')),
+      );
     }
   }
 
-  void _addProject() {
+  void _addWorkExperience() {
     showDialog(
       context: context,
-      builder: (context) => _ProjectDialog(
-        onSave: (project) async {
+      builder: (context) => _WorkExperienceDialog(
+        onSave: (workExperience) async {
           try {
-            // Add to Firestore subcollection
             final docRef = await FirebaseFirestore.instance
                 .collection('users')
                 .doc(widget.userId)
-                .collection('projects')
+                .collection('workExperience')
                 .add({
-                  ...project,
+                  ...workExperience,
                   'createdAt': FieldValue.serverTimestamp(),
                   'updatedAt': FieldValue.serverTimestamp(),
                 });
 
-            // Add to local list with document ID
             setState(() {
-              project['id'] = docRef.id;
-              _projects.add(project);
-            });
-          } catch (e) {
-            ScaffoldMessenger.of(
-              context,
-            ).showSnackBar(SnackBar(content: Text('Error adding project: $e')));
-          }
-        },
-      ),
-    );
-  }
-
-  void _editProject(int index) {
-    showDialog(
-      context: context,
-      builder: (context) => _ProjectDialog(
-        project: _projects[index],
-        onSave: (project) async {
-          try {
-            // Update in Firestore subcollection
-            await FirebaseFirestore.instance
-                .collection('users')
-                .doc(widget.userId)
-                .collection('projects')
-                .doc(_projects[index]['id'])
-                .update({
-                  ...project,
-                  'updatedAt': FieldValue.serverTimestamp(),
-                });
-
-            // Update local list
-            setState(() {
-              project['id'] = _projects[index]['id']; // Keep the same ID
-              _projects[index] = project;
+              workExperience['id'] = docRef.id;
+              _workExperiences.add(workExperience);
             });
           } catch (e) {
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Error updating project: $e')),
+              SnackBar(content: Text('Error adding work experience: $e')),
             );
           }
         },
@@ -116,28 +79,57 @@ class _ProjectExperienceScreenState extends State<ProjectExperienceScreen> {
     );
   }
 
-  Future<void> _deleteProject(int index) async {
+  void _editWorkExperience(int index) {
+    showDialog(
+      context: context,
+      builder: (context) => _WorkExperienceDialog(
+        workExperience: _workExperiences[index],
+        onSave: (workExperience) async {
+          try {
+            await FirebaseFirestore.instance
+                .collection('users')
+                .doc(widget.userId)
+                .collection('workExperience')
+                .doc(_workExperiences[index]['id'])
+                .update({
+                  ...workExperience,
+                  'updatedAt': FieldValue.serverTimestamp(),
+                });
+
+            setState(() {
+              workExperience['id'] = _workExperiences[index]['id'];
+              _workExperiences[index] = workExperience;
+            });
+          } catch (e) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Error updating work experience: $e')),
+            );
+          }
+        },
+      ),
+    );
+  }
+
+  Future<void> _deleteWorkExperience(int index) async {
     try {
-      // Delete from Firestore subcollection
       await FirebaseFirestore.instance
           .collection('users')
           .doc(widget.userId)
-          .collection('projects')
-          .doc(_projects[index]['id'])
+          .collection('workExperience')
+          .doc(_workExperiences[index]['id'])
           .delete();
 
-      // Remove from local list
       setState(() {
-        _projects.removeAt(index);
+        _workExperiences.removeAt(index);
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Project deleted successfully')),
+        const SnackBar(content: Text('Work experience deleted successfully')),
       );
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Error deleting project: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error deleting work experience: $e')),
+      );
     }
   }
 
@@ -145,13 +137,11 @@ class _ProjectExperienceScreenState extends State<ProjectExperienceScreen> {
     setState(() => _isLoading = true);
 
     try {
-      // Update user document to mark this step as completed
-      // Adjust the step number based on your flow
       await FirebaseFirestore.instance
           .collection('users')
           .doc(widget.userId)
           .update({
-            'completedSteps': 11, // Adjust this number
+            'completedSteps': 10,
             'updatedAt': FieldValue.serverTimestamp(),
           });
 
@@ -160,13 +150,8 @@ class _ProjectExperienceScreenState extends State<ProjectExperienceScreen> {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => AwardsScreen(userId: widget.userId),
+          builder: (context) => ProjectExperienceScreen(userId: widget.userId),
         ),
-      );
-
-      // For now, just show success message
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Projects saved successfully!')),
       );
     } catch (e) {
       ScaffoldMessenger.of(
@@ -191,7 +176,7 @@ class _ProjectExperienceScreenState extends State<ProjectExperienceScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              'Delete "${_projects[index]['title']}"?',
+              'Delete "${_workExperiences[index]['company']}"?',
               style: Theme.of(
                 context,
               ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
@@ -210,7 +195,7 @@ class _ProjectExperienceScreenState extends State<ProjectExperienceScreen> {
                   child: ElevatedButton(
                     onPressed: () {
                       Navigator.pop(context);
-                      _deleteProject(index);
+                      _deleteWorkExperience(index);
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.red,
@@ -234,9 +219,7 @@ class _ProjectExperienceScreenState extends State<ProjectExperienceScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        title: const CustomProgressIndicator(
-          currentStep: 11,
-        ), // Adjust step number
+        title: const CustomProgressIndicator(currentStep: 10),
         centerTitle: true,
       ),
       body: SingleChildScrollView(
@@ -252,7 +235,7 @@ class _ProjectExperienceScreenState extends State<ProjectExperienceScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Project Experience',
+                        'Work Experience',
                         style: Theme.of(context).textTheme.headlineLarge
                             ?.copyWith(
                               color: AppColors.textPrimary,
@@ -261,7 +244,7 @@ class _ProjectExperienceScreenState extends State<ProjectExperienceScreen> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Add your project experiences',
+                        'Add your professional work experience',
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           color: AppColors.textSecondary,
                         ),
@@ -272,7 +255,7 @@ class _ProjectExperienceScreenState extends State<ProjectExperienceScreen> {
               ],
             ),
             const SizedBox(height: 32),
-            if (_projects.isEmpty)
+            if (_workExperiences.isEmpty)
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(32),
@@ -292,7 +275,7 @@ class _ProjectExperienceScreenState extends State<ProjectExperienceScreen> {
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      'No projects added yet',
+                      'No work experience added yet',
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         color: AppColors.textSecondary,
                       ),
@@ -302,7 +285,7 @@ class _ProjectExperienceScreenState extends State<ProjectExperienceScreen> {
                       width: double.infinity,
                       height: 40,
                       child: ElevatedButton(
-                        onPressed: _addProject,
+                        onPressed: _addWorkExperience,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.white,
                           foregroundColor: AppColors.primary,
@@ -316,14 +299,13 @@ class _ProjectExperienceScreenState extends State<ProjectExperienceScreen> {
             else
               Column(
                 children: [
-                  // Project list with swipe to delete
-                  ...(_projects.asMap().entries.map((entry) {
+                  ...(_workExperiences.asMap().entries.map((entry) {
                     final index = entry.key;
-                    final project = entry.value;
+                    final workExperience = entry.value;
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 16),
                       child: Slidable(
-                        key: Key(project['id'] ?? index.toString()),
+                        key: Key(workExperience['id'] ?? index.toString()),
                         endActionPane: ActionPane(
                           motion: const DrawerMotion(),
                           extentRatio: 0.25,
@@ -344,7 +326,7 @@ class _ProjectExperienceScreenState extends State<ProjectExperienceScreen> {
                           ],
                         ),
                         child: GestureDetector(
-                          onTap: () => _editProject(index),
+                          onTap: () => _editWorkExperience(index),
                           child: Container(
                             padding: const EdgeInsets.all(16),
                             decoration: BoxDecoration(
@@ -365,7 +347,7 @@ class _ProjectExperienceScreenState extends State<ProjectExperienceScreen> {
                                   children: [
                                     Expanded(
                                       child: Text(
-                                        project['title'] ?? '',
+                                        workExperience['company'],
                                         style: Theme.of(context)
                                             .textTheme
                                             .bodyLarge
@@ -376,38 +358,33 @@ class _ProjectExperienceScreenState extends State<ProjectExperienceScreen> {
                                       ),
                                     ),
                                     IconButton(
-                                      onPressed: () => _editProject(index),
+                                      onPressed: () =>
+                                          _editWorkExperience(index),
                                       icon: const Icon(Icons.edit, size: 20),
                                       color: AppColors.primary,
                                     ),
                                   ],
                                 ),
-                                if (project['organisation']?.isNotEmpty ==
-                                    true) ...[
-                                  Text(
-                                    project['organisation'],
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .bodyMedium
-                                        ?.copyWith(
-                                          color: AppColors.textPrimary,
-                                        ),
-                                  ),
+                                Text(
+                                  workExperience['title'],
+                                  style: Theme.of(context).textTheme.bodyMedium
+                                      ?.copyWith(color: AppColors.textPrimary),
+                                ),
+                                if (workExperience['description'] != null &&
+                                    workExperience['description']
+                                        .isNotEmpty) ...[
                                   const SizedBox(height: 8),
-                                ],
-                                if (project['description']?.isNotEmpty ==
-                                    true) ...[
                                   Text(
-                                    project['description'],
+                                    workExperience['description'],
                                     style: Theme.of(context).textTheme.bodySmall
                                         ?.copyWith(
                                           color: AppColors.textSecondary,
                                         ),
-                                    maxLines: 3,
+                                    maxLines: 2,
                                     overflow: TextOverflow.ellipsis,
                                   ),
-                                  const SizedBox(height: 8),
                                 ],
+                                const SizedBox(height: 8),
                                 Row(
                                   children: [
                                     Icon(
@@ -417,7 +394,7 @@ class _ProjectExperienceScreenState extends State<ProjectExperienceScreen> {
                                     ),
                                     const SizedBox(width: 4),
                                     Text(
-                                      '${project['startDate'] ?? ''} - ${project['endDate'] ?? ''}',
+                                      '${workExperience['startDate']} - ${workExperience['endDate']}',
                                       style: Theme.of(context)
                                           .textTheme
                                           .bodySmall
@@ -437,14 +414,13 @@ class _ProjectExperienceScreenState extends State<ProjectExperienceScreen> {
                   })),
                 ],
               ),
-            // Add Project button (only shows if at least one project is added)
-            if (_projects.isNotEmpty) ...[
+            if (_workExperiences.isNotEmpty) ...[
               const SizedBox(height: 6),
               SizedBox(
                 width: double.infinity,
                 height: 40,
                 child: ElevatedButton(
-                  onPressed: _addProject,
+                  onPressed: _addWorkExperience,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.white,
                     foregroundColor: AppColors.primary,
@@ -484,20 +460,20 @@ class _ProjectExperienceScreenState extends State<ProjectExperienceScreen> {
   }
 }
 
-class _ProjectDialog extends StatefulWidget {
-  final Map<String, dynamic>? project;
+class _WorkExperienceDialog extends StatefulWidget {
+  final Map<String, dynamic>? workExperience;
   final Function(Map<String, dynamic>) onSave;
 
-  const _ProjectDialog({this.project, required this.onSave});
+  const _WorkExperienceDialog({this.workExperience, required this.onSave});
 
   @override
-  State<_ProjectDialog> createState() => _ProjectDialogState();
+  State<_WorkExperienceDialog> createState() => _WorkExperienceDialogState();
 }
 
-class _ProjectDialogState extends State<_ProjectDialog> {
+class _WorkExperienceDialogState extends State<_WorkExperienceDialog> {
   final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _companyController;
   late final TextEditingController _titleController;
-  late final TextEditingController _organisationController;
   late final TextEditingController _startDateController;
   late final TextEditingController _endDateController;
   late final TextEditingController _descriptionController;
@@ -505,27 +481,27 @@ class _ProjectDialogState extends State<_ProjectDialog> {
   @override
   void initState() {
     super.initState();
-    _titleController = TextEditingController(
-      text: widget.project?['title'] ?? '',
+    _companyController = TextEditingController(
+      text: widget.workExperience?['company'] ?? '',
     );
-    _organisationController = TextEditingController(
-      text: widget.project?['organisation'] ?? '',
+    _titleController = TextEditingController(
+      text: widget.workExperience?['title'] ?? '',
     );
     _startDateController = TextEditingController(
-      text: widget.project?['startDate'] ?? '',
+      text: widget.workExperience?['startDate'] ?? '',
     );
     _endDateController = TextEditingController(
-      text: widget.project?['endDate'] ?? '',
+      text: widget.workExperience?['endDate'] ?? '',
     );
     _descriptionController = TextEditingController(
-      text: widget.project?['description'] ?? '',
+      text: widget.workExperience?['description'] ?? '',
     );
   }
 
   @override
   void dispose() {
+    _companyController.dispose();
     _titleController.dispose();
-    _organisationController.dispose();
     _startDateController.dispose();
     _endDateController.dispose();
     _descriptionController.dispose();
@@ -535,8 +511,8 @@ class _ProjectDialogState extends State<_ProjectDialog> {
   void _save() {
     if (_formKey.currentState!.validate()) {
       widget.onSave({
+        'company': _companyController.text,
         'title': _titleController.text,
-        'organisation': _organisationController.text,
         'startDate': _startDateController.text,
         'endDate': _endDateController.text,
         'description': _descriptionController.text,
@@ -557,7 +533,9 @@ class _ProjectDialogState extends State<_ProjectDialog> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                widget.project == null ? 'Add Project' : 'Edit Project',
+                widget.workExperience == null
+                    ? 'Add Work Experience'
+                    : 'Edit Work Experience',
                 style: Theme.of(context).textTheme.headlineSmall,
               ),
               const SizedBox(height: 16),
@@ -567,52 +545,42 @@ class _ProjectDialogState extends State<_ProjectDialog> {
                   child: Column(
                     children: [
                       CustomTextField(
-                        controller: _titleController,
-                        label: 'Project Title',
-                        hint: 'e.g., E-commerce Mobile App',
+                        controller: _companyController,
+                        label: 'Company',
+                        hint: 'e.g., Google',
                         validator: (v) =>
                             v?.isEmpty == true ? 'Required' : null,
                       ),
                       const SizedBox(height: 16),
                       CustomTextField(
-                        controller: _organisationController,
-                        label: 'Organisation',
-                        hint: 'e.g., Tech Company Pte Ltd',
+                        controller: _titleController,
+                        label: 'Job Title',
+                        hint: 'e.g., Software Engineer',
                         validator: (v) =>
                             v?.isEmpty == true ? 'Required' : null,
                       ),
                       const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: CustomTextField(
-                              controller: _startDateController,
-                              label: 'Start Date',
-                              hint: 'e.g., Jan 2023',
-                              validator: (v) =>
-                                  v?.isEmpty == true ? 'Required' : null,
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: CustomTextField(
-                              controller: _endDateController,
-                              label: 'End Date',
-                              hint: 'e.g., Dec 2023',
-                              validator: (v) =>
-                                  v?.isEmpty == true ? 'Required' : null,
-                            ),
-                          ),
-                        ],
+                      CustomTextField(
+                        controller: _startDateController,
+                        label: 'Start Date',
+                        hint: 'e.g., Jan 2022',
+                        validator: (v) =>
+                            v?.isEmpty == true ? 'Required' : null,
+                      ),
+                      const SizedBox(height: 16),
+                      CustomTextField(
+                        controller: _endDateController,
+                        label: 'End Date',
+                        hint: 'e.g., Present or Dec 2023',
+                        validator: (v) =>
+                            v?.isEmpty == true ? 'Required' : null,
                       ),
                       const SizedBox(height: 16),
                       CustomTextField(
                         controller: _descriptionController,
                         label: 'Description',
-                        hint: 'Describe your project and contributions...',
-                        maxLines: 4,
-                        validator: (v) =>
-                            v?.isEmpty == true ? 'Required' : null,
+                        hint: 'Brief description of your role and achievements',
+                        maxLines: 3,
                       ),
                     ],
                   ),

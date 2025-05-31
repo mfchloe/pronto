@@ -1,29 +1,30 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../../../widgets/custom_text_field.dart';
-import '../../../widgets/progress_indicator.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:pronto/widgets/progress_indicator.dart';
 import 'package:pronto/constants.dart';
-import 'intro_screen.dart';
+import 'package:pronto/widgets/custom_text_field.dart';
+import 'resume_screen.dart';
 
-class LocationScreen extends StatefulWidget {
+class SocialsScreen extends StatefulWidget {
   final String? userId;
 
-  const LocationScreen({super.key, required this.userId});
+  const SocialsScreen({super.key, required this.userId});
 
   @override
-  State<LocationScreen> createState() => _LocationScreenState();
+  State<SocialsScreen> createState() => _SocialsScreenState();
 }
 
-class _LocationScreenState extends State<LocationScreen> {
+class _SocialsScreenState extends State<SocialsScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _addressController = TextEditingController();
-  final _postalCodeController = TextEditingController();
+  final _linkedInController = TextEditingController();
+  final _githubController = TextEditingController();
   bool _isLoading = false;
 
   @override
   void dispose() {
-    _addressController.dispose();
-    _postalCodeController.dispose();
+    _linkedInController.dispose();
+    _githubController.dispose();
     super.dispose();
   }
 
@@ -35,11 +36,11 @@ class _LocationScreenState extends State<LocationScreen> {
           .collection('users')
           .doc(widget.userId)
           .update({
-            'location': {
-              'address': _addressController.text,
-              'postalCode': int.parse(_postalCodeController.text),
+            'socials': {
+              'linkedIn': _linkedInController.text,
+              'gitHub': _githubController.text,
             },
-            'completedSteps': 4,
+            'completedSteps': 7,
             'updatedAt': FieldValue.serverTimestamp(),
           });
 
@@ -48,7 +49,7 @@ class _LocationScreenState extends State<LocationScreen> {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => IntroScreen(userId: widget.userId),
+          builder: (context) => ResumeScreen(userId: widget.userId),
         ),
       );
     } catch (e) {
@@ -67,7 +68,7 @@ class _LocationScreenState extends State<LocationScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        title: const CustomProgressIndicator(currentStep: 4),
+        title: const CustomProgressIndicator(currentStep: 7),
         centerTitle: true,
       ),
       body: SingleChildScrollView(
@@ -78,7 +79,7 @@ class _LocationScreenState extends State<LocationScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Where do you stay?',
+                'Connect your profiles',
                 style: Theme.of(context).textTheme.headlineLarge?.copyWith(
                   color: AppColors.textPrimary,
                   fontSize: 24,
@@ -86,36 +87,57 @@ class _LocationScreenState extends State<LocationScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                'This helps us find opportunities near you',
+                'Link your professional and portfolio accounts',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: AppColors.textSecondary,
                 ),
               ),
               const SizedBox(height: 32),
               CustomTextField(
-                controller: _addressController,
-                label: 'Address',
-                hint: 'Enter your full address',
-                maxLines: 3,
+                controller: _linkedInController,
+                label: 'LinkedIn Profile',
+                hint: 'https://linkedin.com/in/your-profile',
+                prefixIcon: Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: FaIcon(
+                    FontAwesomeIcons.linkedin,
+                    color: Colors.black,
+                    size: 20,
+                  ),
+                ),
+
                 validator: (value) {
-                  if (value?.isEmpty ?? true) {
-                    return 'Please enter your address';
+                  if (value != null && value.isNotEmpty) {
+                    if (!RegExp(
+                      r'^https?://.*linkedin\.com/.*',
+                    ).hasMatch(value)) {
+                      return 'Please enter a valid LinkedIn URL';
+                    }
                   }
                   return null;
                 },
               ),
               const SizedBox(height: 20),
               CustomTextField(
-                controller: _postalCodeController,
-                label: 'Postal Code',
-                hint: 'Enter 6-digit postal code',
-                keyboardType: TextInputType.number,
+                controller: _githubController,
+                label: 'GitHub Profile',
+                hint: 'https://github.com/your-username',
+                prefixIcon: Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: FaIcon(
+                    FontAwesomeIcons.github,
+                    color: Colors.black,
+                    size: 20,
+                  ),
+                ),
+
                 validator: (value) {
-                  if (value?.isEmpty ?? true) {
-                    return 'Please enter your postal code';
-                  }
-                  if (!RegExp(r'^\d{6}$').hasMatch(value!)) {
-                    return 'Please enter a valid 6-digit postal code';
+                  if (value != null && value.isNotEmpty) {
+                    if (!RegExp(
+                      r'^https?://.*github\.com/.*',
+                    ).hasMatch(value)) {
+                      return 'Please enter a valid GitHub URL';
+                    }
                   }
                   return null;
                 },

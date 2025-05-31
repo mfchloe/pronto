@@ -12,6 +12,9 @@ class CustomTextField extends StatelessWidget {
   final int maxLines;
   final bool enabled;
   final void Function(String)? onFieldSubmitted;
+  final void Function(String)? onChanged;
+  final bool readOnly;
+  final void Function()? onTap;
   final Widget? prefixIcon;
 
   const CustomTextField({
@@ -27,6 +30,9 @@ class CustomTextField extends StatelessWidget {
     this.maxLines = 1,
     this.enabled = true,
     this.onFieldSubmitted,
+    this.onChanged,
+    this.readOnly = false,
+    this.onTap,
   });
 
   @override
@@ -51,6 +57,9 @@ class CustomTextField extends StatelessWidget {
           enabled: enabled,
           cursorColor: Colors.black,
           onFieldSubmitted: onFieldSubmitted,
+          onChanged: onChanged,
+          readOnly: readOnly,
+          onTap: onTap,
           decoration: InputDecoration(
             hintText: hint,
             hintStyle: Theme.of(

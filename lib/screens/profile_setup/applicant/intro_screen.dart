@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../../../widgets/progress_indicator.dart';
+import 'package:pronto/widgets/progress_indicator.dart';
 import 'package:pronto/constants.dart';
 import 'skills_screen.dart';
 

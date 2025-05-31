@@ -1,30 +1,29 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import '../../../widgets/progress_indicator.dart';
+import 'package:pronto/widgets/custom_text_field.dart';
+import 'package:pronto/widgets/progress_indicator.dart';
 import 'package:pronto/constants.dart';
-import '../../widgets/custom_text_field.dart';
-import 'resume_screen.dart';
+import 'intro_screen.dart';
 
-class SocialsScreen extends StatefulWidget {
+class LocationScreen extends StatefulWidget {
   final String? userId;
 
-  const SocialsScreen({super.key, required this.userId});
+  const LocationScreen({super.key, required this.userId});
 
   @override
-  State<SocialsScreen> createState() => _SocialsScreenState();
+  State<LocationScreen> createState() => _LocationScreenState();
 }
 
-class _SocialsScreenState extends State<SocialsScreen> {
+class _LocationScreenState extends State<LocationScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _linkedInController = TextEditingController();
-  final _githubController = TextEditingController();
+  final _addressController = TextEditingController();
+  final _postalCodeController = TextEditingController();
   bool _isLoading = false;
 
   @override
   void dispose() {
-    _linkedInController.dispose();
-    _githubController.dispose();
+    _addressController.dispose();
+    _postalCodeController.dispose();
     super.dispose();
   }
 
@@ -36,11 +35,11 @@ class _SocialsScreenState extends State<SocialsScreen> {
           .collection('users')
           .doc(widget.userId)
           .update({
-            'socials': {
-              'linkedIn': _linkedInController.text,
-              'gitHub': _githubController.text,
+            'location': {
+              'address': _addressController.text,
+              'postalCode': int.parse(_postalCodeController.text),
             },
-            'completedSteps': 7,
+            'completedSteps': 4,
             'updatedAt': FieldValue.serverTimestamp(),
           });
 
@@ -49,7 +48,7 @@ class _SocialsScreenState extends State<SocialsScreen> {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => ResumeScreen(userId: widget.userId),
+          builder: (context) => IntroScreen(userId: widget.userId),
         ),
       );
     } catch (e) {
@@ -68,7 +67,7 @@ class _SocialsScreenState extends State<SocialsScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        title: const CustomProgressIndicator(currentStep: 7),
+        title: const CustomProgressIndicator(currentStep: 4),
         centerTitle: true,
       ),
       body: SingleChildScrollView(
@@ -79,7 +78,7 @@ class _SocialsScreenState extends State<SocialsScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Connect your profiles',
+                'Where do you stay?',
                 style: Theme.of(context).textTheme.headlineLarge?.copyWith(
                   color: AppColors.textPrimary,
                   fontSize: 24,
@@ -87,57 +86,36 @@ class _SocialsScreenState extends State<SocialsScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                'Link your professional and portfolio accounts',
+                'This helps us find opportunities near you',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: AppColors.textSecondary,
                 ),
               ),
               const SizedBox(height: 32),
               CustomTextField(
-                controller: _linkedInController,
-                label: 'LinkedIn Profile',
-                hint: 'https://linkedin.com/in/your-profile',
-                prefixIcon: Padding(
-                  padding: const EdgeInsets.all(12.0),
-                  child: FaIcon(
-                    FontAwesomeIcons.linkedin,
-                    color: Colors.black,
-                    size: 20,
-                  ),
-                ),
-
+                controller: _addressController,
+                label: 'Address',
+                hint: 'Enter your full address',
+                maxLines: 3,
                 validator: (value) {
-                  if (value != null && value.isNotEmpty) {
-                    if (!RegExp(
-                      r'^https?://.*linkedin\.com/.*',
-                    ).hasMatch(value)) {
-                      return 'Please enter a valid LinkedIn URL';
-                    }
+                  if (value?.isEmpty ?? true) {
+                    return 'Please enter your address';
                   }
                   return null;
                 },
               ),
               const SizedBox(height: 20),
               CustomTextField(
-                controller: _githubController,
-                label: 'GitHub Profile',
-                hint: 'https://github.com/your-username',
-                prefixIcon: Padding(
-                  padding: const EdgeInsets.all(12.0),
-                  child: FaIcon(
-                    FontAwesomeIcons.github,
-                    color: Colors.black,
-                    size: 20,
-                  ),
-                ),
-
+                controller: _postalCodeController,
+                label: 'Postal Code',
+                hint: 'Enter 6-digit postal code',
+                keyboardType: TextInputType.number,
                 validator: (value) {
-                  if (value != null && value.isNotEmpty) {
-                    if (!RegExp(
-                      r'^https?://.*github\.com/.*',
-                    ).hasMatch(value)) {
-                      return 'Please enter a valid GitHub URL';
-                    }
+                  if (value?.isEmpty ?? true) {
+                    return 'Please enter your postal code';
+                  }
+                  if (!RegExp(r'^\d{6}$').hasMatch(value!)) {
+                    return 'Please enter a valid 6-digit postal code';
                   }
                   return null;
                 },

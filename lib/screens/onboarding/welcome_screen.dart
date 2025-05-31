@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../constants.dart';
+import 'package:pronto/constants.dart';
 import '../auth/sign_up_screen.dart';
 import '../auth/sign_in_screen.dart';
 

@@ -1,41 +1,41 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../../../widgets/progress_indicator.dart';
-import '../../widgets/custom_text_field.dart';
+import 'package:pronto/widgets/progress_indicator.dart';
+import 'package:pronto/widgets/custom_text_field.dart';
 import 'package:pronto/constants.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
-import 'project_screen.dart';
+import '../../home_screen.dart';
 
-class WorkExperienceScreen extends StatefulWidget {
+class AwardsScreen extends StatefulWidget {
   final String? userId;
 
-  const WorkExperienceScreen({super.key, required this.userId});
+  const AwardsScreen({super.key, required this.userId});
 
   @override
-  State<WorkExperienceScreen> createState() => _WorkExperienceScreenState();
+  State<AwardsScreen> createState() => _AwardsScreenState();
 }
 
-class _WorkExperienceScreenState extends State<WorkExperienceScreen> {
-  List<Map<String, dynamic>> _workExperiences = [];
+class _AwardsScreenState extends State<AwardsScreen> {
+  List<Map<String, dynamic>> _awards = [];
   bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
-    _loadWorkExperienceData();
+    _loadAwardsData();
   }
 
-  Future<void> _loadWorkExperienceData() async {
+  Future<void> _loadAwardsData() async {
     try {
-      final workSnapshot = await FirebaseFirestore.instance
+      final awardsSnapshot = await FirebaseFirestore.instance
           .collection('users')
           .doc(widget.userId)
-          .collection('workExperience')
+          .collection('awards')
           .get();
 
-      if (workSnapshot.docs.isNotEmpty) {
+      if (awardsSnapshot.docs.isNotEmpty) {
         setState(() {
-          _workExperiences = workSnapshot.docs.map((doc) {
+          _awards = awardsSnapshot.docs.map((doc) {
             final data = doc.data();
             data['id'] = doc.id;
             return data;
@@ -43,93 +43,91 @@ class _WorkExperienceScreenState extends State<WorkExperienceScreen> {
         });
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error loading work experience data: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error loading awards data: $e')));
     }
   }
 
-  void _addWorkExperience() {
+  void _addAward() {
     showDialog(
       context: context,
-      builder: (context) => _WorkExperienceDialog(
-        onSave: (workExperience) async {
+      builder: (context) => _AwardDialog(
+        onSave: (award) async {
           try {
             final docRef = await FirebaseFirestore.instance
                 .collection('users')
                 .doc(widget.userId)
-                .collection('workExperience')
+                .collection('awards')
                 .add({
-                  ...workExperience,
+                  ...award,
+                  'completedSteps': 12,
                   'createdAt': FieldValue.serverTimestamp(),
                   'updatedAt': FieldValue.serverTimestamp(),
                 });
 
             setState(() {
-              workExperience['id'] = docRef.id;
-              _workExperiences.add(workExperience);
+              award['id'] = docRef.id;
+              _awards.add(award);
             });
           } catch (e) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Error adding work experience: $e')),
-            );
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text('Error adding award: $e')));
           }
         },
       ),
     );
   }
 
-  void _editWorkExperience(int index) {
+  void _editAward(int index) {
     showDialog(
       context: context,
-      builder: (context) => _WorkExperienceDialog(
-        workExperience: _workExperiences[index],
-        onSave: (workExperience) async {
+      builder: (context) => _AwardDialog(
+        award: _awards[index],
+        onSave: (award) async {
           try {
             await FirebaseFirestore.instance
                 .collection('users')
                 .doc(widget.userId)
-                .collection('workExperience')
-                .doc(_workExperiences[index]['id'])
-                .update({
-                  ...workExperience,
-                  'updatedAt': FieldValue.serverTimestamp(),
-                });
+                .collection('awards')
+                .doc(_awards[index]['id'])
+                .update({...award, 'updatedAt': FieldValue.serverTimestamp()});
 
             setState(() {
-              workExperience['id'] = _workExperiences[index]['id'];
-              _workExperiences[index] = workExperience;
+              award['id'] = _awards[index]['id'];
+              _awards[index] = award;
             });
           } catch (e) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Error updating work experience: $e')),
-            );
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text('Error updating award: $e')));
           }
         },
       ),
     );
   }
 
-  Future<void> _deleteWorkExperience(int index) async {
+  Future<void> _deleteAward(int index) async {
     try {
       await FirebaseFirestore.instance
           .collection('users')
           .doc(widget.userId)
-          .collection('workExperience')
-          .doc(_workExperiences[index]['id'])
+          .collection('awards')
+          .doc(_awards[index]['id'])
           .delete();
 
       setState(() {
-        _workExperiences.removeAt(index);
+        _awards.removeAt(index);
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Work experience deleted successfully')),
+        const SnackBar(content: Text('Award deleted successfully')),
       );
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error deleting work experience: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error deleting award: $e')));
     }
   }
 
@@ -141,7 +139,7 @@ class _WorkExperienceScreenState extends State<WorkExperienceScreen> {
           .collection('users')
           .doc(widget.userId)
           .update({
-            'completedSteps': 10,
+            'completedSteps': 13,
             'updatedAt': FieldValue.serverTimestamp(),
           });
 
@@ -150,8 +148,13 @@ class _WorkExperienceScreenState extends State<WorkExperienceScreen> {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => ProjectExperienceScreen(userId: widget.userId),
+          builder: (context) => HomeScreen(userId: widget.userId),
         ),
+      );
+
+      // For now, show completion message
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Profile setup completed successfully!')),
       );
     } catch (e) {
       ScaffoldMessenger.of(
@@ -176,7 +179,7 @@ class _WorkExperienceScreenState extends State<WorkExperienceScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              'Delete "${_workExperiences[index]['company']}"?',
+              'Delete "${_awards[index]['title']}"?',
               style: Theme.of(
                 context,
               ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
@@ -195,7 +198,7 @@ class _WorkExperienceScreenState extends State<WorkExperienceScreen> {
                   child: ElevatedButton(
                     onPressed: () {
                       Navigator.pop(context);
-                      _deleteWorkExperience(index);
+                      _deleteAward(index);
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.red,
@@ -219,7 +222,7 @@ class _WorkExperienceScreenState extends State<WorkExperienceScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        title: const CustomProgressIndicator(currentStep: 10),
+        title: const CustomProgressIndicator(currentStep: 12),
         centerTitle: true,
       ),
       body: SingleChildScrollView(
@@ -235,7 +238,7 @@ class _WorkExperienceScreenState extends State<WorkExperienceScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Work Experience',
+                        'Awards & Achievements',
                         style: Theme.of(context).textTheme.headlineLarge
                             ?.copyWith(
                               color: AppColors.textPrimary,
@@ -244,7 +247,7 @@ class _WorkExperienceScreenState extends State<WorkExperienceScreen> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Add your professional work experience',
+                        'Add your awards, honors, and achievements',
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           color: AppColors.textSecondary,
                         ),
@@ -255,7 +258,7 @@ class _WorkExperienceScreenState extends State<WorkExperienceScreen> {
               ],
             ),
             const SizedBox(height: 32),
-            if (_workExperiences.isEmpty)
+            if (_awards.isEmpty)
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(32),
@@ -269,13 +272,13 @@ class _WorkExperienceScreenState extends State<WorkExperienceScreen> {
                 child: Column(
                   children: [
                     Icon(
-                      Icons.work_outline,
+                      Icons.emoji_events_outlined,
                       size: 48,
                       color: AppColors.textSecondary,
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      'No work experience added yet',
+                      'No awards added yet',
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         color: AppColors.textSecondary,
                       ),
@@ -285,7 +288,7 @@ class _WorkExperienceScreenState extends State<WorkExperienceScreen> {
                       width: double.infinity,
                       height: 40,
                       child: ElevatedButton(
-                        onPressed: _addWorkExperience,
+                        onPressed: _addAward,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.white,
                           foregroundColor: AppColors.primary,
@@ -299,13 +302,13 @@ class _WorkExperienceScreenState extends State<WorkExperienceScreen> {
             else
               Column(
                 children: [
-                  ...(_workExperiences.asMap().entries.map((entry) {
+                  ...(_awards.asMap().entries.map((entry) {
                     final index = entry.key;
-                    final workExperience = entry.value;
+                    final award = entry.value;
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 16),
                       child: Slidable(
-                        key: Key(workExperience['id'] ?? index.toString()),
+                        key: Key(award['id'] ?? index.toString()),
                         endActionPane: ActionPane(
                           motion: const DrawerMotion(),
                           extentRatio: 0.25,
@@ -326,7 +329,7 @@ class _WorkExperienceScreenState extends State<WorkExperienceScreen> {
                           ],
                         ),
                         child: GestureDetector(
-                          onTap: () => _editWorkExperience(index),
+                          onTap: () => _editAward(index),
                           child: Container(
                             padding: const EdgeInsets.all(16),
                             decoration: BoxDecoration(
@@ -347,7 +350,7 @@ class _WorkExperienceScreenState extends State<WorkExperienceScreen> {
                                   children: [
                                     Expanded(
                                       child: Text(
-                                        workExperience['company'],
+                                        award['title'],
                                         style: Theme.of(context)
                                             .textTheme
                                             .bodyLarge
@@ -358,33 +361,12 @@ class _WorkExperienceScreenState extends State<WorkExperienceScreen> {
                                       ),
                                     ),
                                     IconButton(
-                                      onPressed: () =>
-                                          _editWorkExperience(index),
+                                      onPressed: () => _editAward(index),
                                       icon: const Icon(Icons.edit, size: 20),
                                       color: AppColors.primary,
                                     ),
                                   ],
                                 ),
-                                Text(
-                                  workExperience['title'],
-                                  style: Theme.of(context).textTheme.bodyMedium
-                                      ?.copyWith(color: AppColors.textPrimary),
-                                ),
-                                if (workExperience['description'] != null &&
-                                    workExperience['description']
-                                        .isNotEmpty) ...[
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    workExperience['description'],
-                                    style: Theme.of(context).textTheme.bodySmall
-                                        ?.copyWith(
-                                          color: AppColors.textSecondary,
-                                        ),
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ],
-                                const SizedBox(height: 8),
                                 Row(
                                   children: [
                                     Icon(
@@ -394,7 +376,7 @@ class _WorkExperienceScreenState extends State<WorkExperienceScreen> {
                                     ),
                                     const SizedBox(width: 4),
                                     Text(
-                                      '${workExperience['startDate']} - ${workExperience['endDate']}',
+                                      award['year'].toString(),
                                       style: Theme.of(context)
                                           .textTheme
                                           .bodySmall
@@ -405,6 +387,19 @@ class _WorkExperienceScreenState extends State<WorkExperienceScreen> {
                                     ),
                                   ],
                                 ),
+                                if (award['description'] != null &&
+                                    award['description'].isNotEmpty) ...[
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    award['description'],
+                                    style: Theme.of(context).textTheme.bodySmall
+                                        ?.copyWith(
+                                          color: AppColors.textSecondary,
+                                        ),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
                               ],
                             ),
                           ),
@@ -414,13 +409,13 @@ class _WorkExperienceScreenState extends State<WorkExperienceScreen> {
                   })),
                 ],
               ),
-            if (_workExperiences.isNotEmpty) ...[
+            if (_awards.isNotEmpty) ...[
               const SizedBox(height: 6),
               SizedBox(
                 width: double.infinity,
                 height: 40,
                 child: ElevatedButton(
-                  onPressed: _addWorkExperience,
+                  onPressed: _addAward,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.white,
                     foregroundColor: AppColors.primary,
@@ -445,7 +440,7 @@ class _WorkExperienceScreenState extends State<WorkExperienceScreen> {
                 child: _isLoading
                     ? const CircularProgressIndicator(color: Colors.white)
                     : const Text(
-                        'Continue',
+                        'Finish',
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
@@ -460,50 +455,40 @@ class _WorkExperienceScreenState extends State<WorkExperienceScreen> {
   }
 }
 
-class _WorkExperienceDialog extends StatefulWidget {
-  final Map<String, dynamic>? workExperience;
+class _AwardDialog extends StatefulWidget {
+  final Map<String, dynamic>? award;
   final Function(Map<String, dynamic>) onSave;
 
-  const _WorkExperienceDialog({this.workExperience, required this.onSave});
+  const _AwardDialog({this.award, required this.onSave});
 
   @override
-  State<_WorkExperienceDialog> createState() => _WorkExperienceDialogState();
+  State<_AwardDialog> createState() => _AwardDialogState();
 }
 
-class _WorkExperienceDialogState extends State<_WorkExperienceDialog> {
+class _AwardDialogState extends State<_AwardDialog> {
   final _formKey = GlobalKey<FormState>();
-  late final TextEditingController _companyController;
   late final TextEditingController _titleController;
-  late final TextEditingController _startDateController;
-  late final TextEditingController _endDateController;
+  late final TextEditingController _yearController;
   late final TextEditingController _descriptionController;
 
   @override
   void initState() {
     super.initState();
-    _companyController = TextEditingController(
-      text: widget.workExperience?['company'] ?? '',
-    );
     _titleController = TextEditingController(
-      text: widget.workExperience?['title'] ?? '',
+      text: widget.award?['title'] ?? '',
     );
-    _startDateController = TextEditingController(
-      text: widget.workExperience?['startDate'] ?? '',
-    );
-    _endDateController = TextEditingController(
-      text: widget.workExperience?['endDate'] ?? '',
+    _yearController = TextEditingController(
+      text: widget.award?['year']?.toString() ?? '',
     );
     _descriptionController = TextEditingController(
-      text: widget.workExperience?['description'] ?? '',
+      text: widget.award?['description'] ?? '',
     );
   }
 
   @override
   void dispose() {
-    _companyController.dispose();
     _titleController.dispose();
-    _startDateController.dispose();
-    _endDateController.dispose();
+    _yearController.dispose();
     _descriptionController.dispose();
     super.dispose();
   }
@@ -511,10 +496,8 @@ class _WorkExperienceDialogState extends State<_WorkExperienceDialog> {
   void _save() {
     if (_formKey.currentState!.validate()) {
       widget.onSave({
-        'company': _companyController.text,
         'title': _titleController.text,
-        'startDate': _startDateController.text,
-        'endDate': _endDateController.text,
+        'year': int.parse(_yearController.text),
         'description': _descriptionController.text,
       });
       Navigator.pop(context);
@@ -533,9 +516,7 @@ class _WorkExperienceDialogState extends State<_WorkExperienceDialog> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                widget.workExperience == null
-                    ? 'Add Work Experience'
-                    : 'Edit Work Experience',
+                widget.award == null ? 'Add Award' : 'Edit Award',
                 style: Theme.of(context).textTheme.headlineSmall,
               ),
               const SizedBox(height: 16),
@@ -545,41 +526,34 @@ class _WorkExperienceDialogState extends State<_WorkExperienceDialog> {
                   child: Column(
                     children: [
                       CustomTextField(
-                        controller: _companyController,
-                        label: 'Company',
-                        hint: 'e.g., Google',
-                        validator: (v) =>
-                            v?.isEmpty == true ? 'Required' : null,
-                      ),
-                      const SizedBox(height: 16),
-                      CustomTextField(
                         controller: _titleController,
-                        label: 'Job Title',
-                        hint: 'e.g., Software Engineer',
+                        label: 'Award Title',
+                        hint: 'e.g., Dean\'s List',
                         validator: (v) =>
                             v?.isEmpty == true ? 'Required' : null,
                       ),
                       const SizedBox(height: 16),
                       CustomTextField(
-                        controller: _startDateController,
-                        label: 'Start Date',
-                        hint: 'e.g., Jan 2022',
-                        validator: (v) =>
-                            v?.isEmpty == true ? 'Required' : null,
-                      ),
-                      const SizedBox(height: 16),
-                      CustomTextField(
-                        controller: _endDateController,
-                        label: 'End Date',
-                        hint: 'e.g., Present or Dec 2023',
-                        validator: (v) =>
-                            v?.isEmpty == true ? 'Required' : null,
+                        controller: _yearController,
+                        label: 'Year',
+                        hint: 'e.g., 2023',
+                        keyboardType: TextInputType.number,
+                        validator: (v) {
+                          if (v?.isEmpty == true) return 'Required';
+                          final year = int.tryParse(v!);
+                          if (year == null) return 'Please enter a valid year';
+                          final currentYear = DateTime.now().year;
+                          if (year < 1900 || year > currentYear + 10) {
+                            return 'Please enter a valid year';
+                          }
+                          return null;
+                        },
                       ),
                       const SizedBox(height: 16),
                       CustomTextField(
                         controller: _descriptionController,
                         label: 'Description',
-                        hint: 'Brief description of your role and achievements',
+                        hint: 'Brief description of the award or achievement',
                         maxLines: 3,
                       ),
                     ],

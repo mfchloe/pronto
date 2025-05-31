@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../../widgets/custom_text_field.dart';
+import 'package:pronto/widgets/custom_text_field.dart';
 import 'package:pronto/constants.dart';
-import '../profile_setup/personal_details_screen.dart';
+import '../profile_setup/applicant/personal_details_screen.dart';
+import '../profile_setup/recruiter/company_selection_screen.dart';
 import 'sign_in_screen.dart';
+
+enum UserType { applicant, recruiter }
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -21,6 +24,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
   bool _isLoading = false;
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
+  UserType? _selectedUserType;
 
   @override
   void dispose() {
@@ -32,6 +36,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
   Future<void> _signUp() async {
     if (!_formKey.currentState!.validate()) return;
+
+    if (_selectedUserType == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select your account type')),
+      );
+      return;
+    }
 
     setState(() {
       _isLoading = true;
@@ -47,20 +58,42 @@ class _SignUpScreenState extends State<SignUpScreen> {
       final user = userCredential.user;
       final userId = user?.uid;
 
-      // Save user document to Firestore
-      await FirebaseFirestore.instance.collection('users').doc(userId).set({
-        'email': user?.email,
-        'completedSteps': 1,
-        'createdAt': FieldValue.serverTimestamp(),
-      });
+      if (_selectedUserType == UserType.applicant) {
+        // Save applicant to users collection
+        await FirebaseFirestore.instance.collection('users').doc(userId).set({
+          'email': user?.email,
+          'userType': 'applicant',
+          'completedSteps': 1,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
 
-      if (mounted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => PersonalDetailsScreen(userId: userId),
-          ),
-        );
+        if (mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => PersonalDetailsScreen(userId: userId),
+            ),
+          );
+        }
+      } else {
+        // Save recruiter to recruiters collection
+        await FirebaseFirestore.instance
+            .collection('recruiters')
+            .doc(userId)
+            .set({
+              'email': user?.email,
+              'userType': 'recruiter',
+              'createdAt': FieldValue.serverTimestamp(),
+            });
+
+        if (mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => CompanySelectionScreen(recruiterId: userId),
+            ),
+          );
+        }
       }
     } on FirebaseAuthException catch (e) {
       String message = 'An error occurred. Please try again.';
@@ -82,6 +115,125 @@ class _SignUpScreenState extends State<SignUpScreen> {
         });
       }
     }
+  }
+
+  Widget _buildUserTypeSelector() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'I am a',
+          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+            color: AppColors.textPrimary,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _selectedUserType = UserType.applicant;
+                  });
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 12,
+                    horizontal: 16,
+                  ),
+                  decoration: BoxDecoration(
+                    border: Border.all(
+                      color: _selectedUserType == UserType.applicant
+                          ? AppColors.primary
+                          : AppColors.textSecondary.withOpacity(0.3),
+                      width: 2,
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                    color: _selectedUserType == UserType.applicant
+                        ? AppColors.primary.withOpacity(0.1)
+                        : Colors.transparent,
+                  ),
+                  child: Column(
+                    children: [
+                      Icon(
+                        Icons.school,
+                        size: 24,
+                        color: _selectedUserType == UserType.applicant
+                            ? AppColors.primary
+                            : AppColors.textSecondary,
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'Applicant',
+                        style: TextStyle(
+                          color: _selectedUserType == UserType.applicant
+                              ? AppColors.primary
+                              : AppColors.textSecondary,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _selectedUserType = UserType.recruiter;
+                  });
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 12,
+                    horizontal: 16,
+                  ),
+                  decoration: BoxDecoration(
+                    border: Border.all(
+                      color: _selectedUserType == UserType.recruiter
+                          ? AppColors.primary
+                          : AppColors.textSecondary.withOpacity(0.3),
+                      width: 2,
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                    color: _selectedUserType == UserType.recruiter
+                        ? AppColors.primary.withOpacity(0.1)
+                        : Colors.transparent,
+                  ),
+                  child: Column(
+                    children: [
+                      Icon(
+                        Icons.business,
+                        size: 24,
+                        color: _selectedUserType == UserType.recruiter
+                            ? AppColors.primary
+                            : AppColors.textSecondary,
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'Recruiter',
+                        style: TextStyle(
+                          color: _selectedUserType == UserType.recruiter
+                              ? AppColors.primary
+                              : AppColors.textSecondary,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
   }
 
   @override
@@ -116,13 +268,15 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Join thousands of students finding their dream internships',
+                  'Join thousands of students and recruiters',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: AppColors.textSecondary,
                     fontSize: 16,
                   ),
                 ),
                 const SizedBox(height: 32),
+                _buildUserTypeSelector(),
+                const SizedBox(height: 24),
                 CustomTextField(
                   controller: _emailController,
                   label: 'Email',

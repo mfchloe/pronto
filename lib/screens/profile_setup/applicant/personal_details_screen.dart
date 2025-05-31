@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../../../widgets/custom_text_field.dart';
-import '../../../widgets/custom_dropdown_field.dart';
-import '../../../widgets/progress_indicator.dart';
+import 'package:pronto/widgets/custom_text_field.dart';
+import 'package:pronto/widgets/custom_dropdown_field.dart';
+import 'package:pronto/widgets/progress_indicator.dart';
 import 'package:pronto/constants.dart';
 import 'designation_screen.dart';
 
