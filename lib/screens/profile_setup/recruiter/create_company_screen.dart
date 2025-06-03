@@ -6,7 +6,8 @@ import 'dart:io';
 import 'package:pronto/widgets/custom_text_field.dart';
 import 'package:pronto/widgets/custom_dropdown_field.dart';
 import 'package:pronto/constants.dart';
-import '../../home_screen.dart';
+import 'package:pronto/widgets/navbar.dart';
+import 'package:pronto/models/userType_model.dart';
 
 class CreateCompanyScreen extends StatefulWidget {
   final String? recruiterId;
@@ -154,7 +155,10 @@ class _CreateCompanyScreenState extends State<CreateCompanyScreen> {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (context) => HomeScreen(userId: widget.recruiterId),
+            builder: (context) => NavBar(
+              userId: widget.recruiterId!,
+              userType: UserType.recruiter,
+            ),
           ),
         );
       }

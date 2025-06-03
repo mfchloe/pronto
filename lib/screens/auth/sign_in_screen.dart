@@ -39,12 +39,8 @@ class _SigninScreenState extends State<SigninScreen> {
           );
 
       if (mounted) {
-        // Navigate to main app
-        Navigator.pushReplacementNamed(
-          context,
-          '/home',
-          arguments: userCredential.user!.uid,
-        );
+        await Future.delayed(const Duration(milliseconds: 100));
+        Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
       }
     } on FirebaseAuthException catch (e) {
       String message = 'An error occurred. Please try again.';

@@ -4,7 +4,8 @@ import 'package:pronto/widgets/progress_indicator.dart';
 import 'package:pronto/widgets/custom_text_field.dart';
 import 'package:pronto/constants.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
-import '../../home_screen.dart';
+import 'package:pronto/widgets/navbar.dart';
+import 'package:pronto/models/userType_model.dart';
 
 class AwardsScreen extends StatefulWidget {
   final String? userId;
@@ -148,7 +149,8 @@ class _AwardsScreenState extends State<AwardsScreen> {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => HomeScreen(userId: widget.userId),
+          builder: (context) =>
+              NavBar(userId: widget.userId!, userType: UserType.applicant),
         ),
       );
 
