@@ -4,7 +4,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:pronto/widgets/custom_text_field.dart';
 import 'package:pronto/constants.dart';
 import 'create_company_screen.dart';
-import '../../home_screen.dart';
+import 'package:pronto/widgets/navbar.dart';
+import 'package:pronto/models/userType_model.dart';
 
 class CompanySelectionScreen extends StatefulWidget {
   final String? recruiterId;
@@ -138,7 +139,10 @@ class _CompanySelectionScreenState extends State<CompanySelectionScreen> {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (context) => HomeScreen(userId: widget.recruiterId),
+            builder: (context) => NavBar(
+              userId: widget.recruiterId!,
+              userType: UserType.recruiter,
+            ),
           ),
         );
       }

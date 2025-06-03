@@ -4,7 +4,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:pronto/screens/onboarding/splash_screen.dart';
 import 'package:pronto/screens/onboarding/welcome_screen.dart';
-import 'package:pronto/screens/home_screen.dart';
 import 'package:pronto/screens/profile_setup/applicant/personal_details_screen.dart';
 import 'package:pronto/screens/profile_setup/applicant/designation_screen.dart';
 import 'package:pronto/screens/profile_setup/applicant/disabilities_screen.dart';
@@ -17,6 +16,8 @@ import 'package:pronto/screens/profile_setup/applicant/education_screen.dart';
 import 'package:pronto/screens/profile_setup/applicant/work_screen.dart';
 import 'package:pronto/screens/profile_setup/applicant/project_screen.dart';
 import 'package:pronto/screens/profile_setup/applicant/award_screen.dart';
+import 'package:pronto/widgets/navbar.dart';
+import 'package:pronto/models/userType_model.dart';
 import 'firebase_options.dart';
 
 void main() async {
@@ -39,6 +40,9 @@ class MyApp extends StatelessWidget {
           primary: Color(0xFF0057B7),
           secondary: Color(0xFFA6D3F2),
         ),
+        splashFactory: NoSplash.splashFactory,
+        highlightColor: Colors.transparent,
+        splashColor: Colors.transparent,
         textTheme: const TextTheme(
           headlineLarge: TextStyle(
             fontSize: 22,
@@ -61,9 +65,12 @@ class MyApp extends StatelessWidget {
               builder: (context) => const WelcomeScreen(),
             );
           case '/home':
-            final String userId = settings.arguments as String;
+            final Map<String, dynamic> args =
+                settings.arguments as Map<String, dynamic>;
+            final String userId = args['userId'] as String;
+            final UserType userType = args['userType'] as UserType;
             return MaterialPageRoute(
-              builder: (context) => HomeScreen(userId: userId),
+              builder: (context) => NavBar(userId: userId, userType: userType),
             );
           case '/personal-details':
             final String userId = settings.arguments as String;
@@ -166,35 +173,49 @@ class OnboardingChecker extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<DocumentSnapshot>(
-      future: FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .get(),
+      future: _fetchUserDocument(user.uid),
       builder: (context, snapshot) {
-        // Show loading screen while fetching user data
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const SplashScreen();
         }
-        // Handle error
-        if (snapshot.hasError) {
-          return const WelcomeScreen();
-        }
-        // User document doesn't exist or no data - shouldn't happen after signup
-        if (!snapshot.hasData || !snapshot.data!.exists) {
-          return const WelcomeScreen();
-        }
-        // User document exists, check completed steps
-        final userData = snapshot.data!.data() as Map<String, dynamic>;
-        final int completedSteps =
-            userData['completedSteps'] ?? 1; // Default to 1 after signup
 
-        // Navigate based on completed steps
-        return _getScreenForStep(completedSteps);
+        if (snapshot.hasError || !snapshot.hasData || !snapshot.data!.exists) {
+          return const WelcomeScreen();
+        }
+
+        final userData = snapshot.data!.data() as Map<String, dynamic>;
+        final String? userTypeStr = userData['userType'] as String?;
+        final userType = UserType.values.firstWhere(
+          (e) => e.toString().split('.').last == userTypeStr,
+          orElse: () => UserType.applicant,
+        );
+
+        if (userType == UserType.recruiter) {
+          return NavBar(userId: user.uid, userType: userType);
+        }
+
+        final int completedSteps = userData['completedSteps'] ?? 1;
+        return _getScreenForStep(completedSteps, userType);
       },
     );
   }
 
-  Widget _getScreenForStep(int completedSteps) {
+  Future<DocumentSnapshot> _fetchUserDocument(String uid) async {
+    final userDoc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .get();
+
+    if (userDoc.exists) return userDoc;
+
+    final recruiterDoc = await FirebaseFirestore.instance
+        .collection('recruiters')
+        .doc(uid)
+        .get();
+    return recruiterDoc;
+  }
+
+  Widget _getScreenForStep(int completedSteps, UserType userType) {
     final String userId = user.uid;
 
     switch (completedSteps) {
@@ -223,7 +244,7 @@ class OnboardingChecker extends StatelessWidget {
       case 12:
         return AwardsScreen(userId: userId);
       default:
-        return HomeScreen(userId: userId);
+        return NavBar(userId: userId, userType: userType);
     }
   }
 }
