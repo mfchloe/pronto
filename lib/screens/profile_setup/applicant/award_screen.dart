@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:pronto/router.dart';
 import 'package:pronto/widgets/progress_indicator.dart';
 import 'package:pronto/widgets/custom_text_field.dart';
 import 'package:pronto/constants.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
-import 'package:pronto/widgets/navbar.dart';
 import 'package:pronto/models/userType_model.dart';
 
 class AwardsScreen extends StatefulWidget {
@@ -146,12 +146,9 @@ class _AwardsScreenState extends State<AwardsScreen> {
 
       if (!mounted) return;
 
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) =>
-              NavBar(userId: widget.userId!, userType: UserType.applicant),
-        ),
+      NavigationHelper.navigateAndClearStack(
+        '/home',
+        arguments: {'userId': widget.userId, 'userType': UserType.applicant},
       );
 
       // For now, show completion message

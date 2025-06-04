@@ -4,7 +4,7 @@ import 'package:pronto/widgets/progress_indicator.dart';
 import 'package:pronto/widgets/custom_text_field.dart';
 import 'package:pronto/constants.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
-import 'project_screen.dart';
+import 'package:pronto/router.dart';
 
 class WorkExperienceScreen extends StatefulWidget {
   final String? userId;
@@ -147,12 +147,7 @@ class _WorkExperienceScreenState extends State<WorkExperienceScreen> {
 
       if (!mounted) return;
 
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => ProjectExperienceScreen(userId: widget.userId),
-        ),
-      );
+      NavigationHelper.navigateTo('/project', arguments: widget.userId);
     } catch (e) {
       ScaffoldMessenger.of(
         context,

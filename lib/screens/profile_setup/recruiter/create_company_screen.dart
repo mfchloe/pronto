@@ -6,8 +6,8 @@ import 'dart:io';
 import 'package:pronto/widgets/custom_text_field.dart';
 import 'package:pronto/widgets/custom_dropdown_field.dart';
 import 'package:pronto/constants.dart';
-import 'package:pronto/widgets/navbar.dart';
 import 'package:pronto/models/userType_model.dart';
+import 'package:pronto/router.dart';
 
 class CreateCompanyScreen extends StatefulWidget {
   final String? recruiterId;
@@ -152,14 +152,12 @@ class _CreateCompanyScreenState extends State<CreateCompanyScreen> {
         );
         // Navigate back to main flow or dashboard
         Navigator.pop(context);
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => NavBar(
-              userId: widget.recruiterId!,
-              userType: UserType.recruiter,
-            ),
-          ),
+        NavigationHelper.navigateAndClearStack(
+          '/home',
+          arguments: {
+            'userId': widget.recruiterId,
+            'userType': UserType.recruiter,
+          },
         );
       }
     } catch (e) {

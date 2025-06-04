@@ -4,7 +4,7 @@ import 'package:pronto/widgets/custom_text_field.dart';
 import 'package:pronto/widgets/custom_dropdown_field.dart';
 import 'package:pronto/widgets/progress_indicator.dart';
 import 'package:pronto/constants.dart';
-import 'designation_screen.dart';
+import 'package:pronto/router.dart';
 
 class PersonalDetailsScreen extends StatefulWidget {
   final String? userId;
@@ -91,12 +91,7 @@ class _PersonalDetailsScreenState extends State<PersonalDetailsScreen> {
 
       if (!mounted) return;
 
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => DesignationScreen(userId: widget.userId),
-        ),
-      );
+      NavigationHelper.navigateTo('/designation', arguments: widget.userId);
     } catch (e) {
       ScaffoldMessenger.of(
         context,

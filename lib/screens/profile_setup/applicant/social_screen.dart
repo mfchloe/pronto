@@ -4,7 +4,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:pronto/widgets/progress_indicator.dart';
 import 'package:pronto/constants.dart';
 import 'package:pronto/widgets/custom_text_field.dart';
-import 'resume_screen.dart';
+import 'package:pronto/router.dart';
 
 class SocialsScreen extends StatefulWidget {
   final String? userId;
@@ -46,12 +46,7 @@ class _SocialsScreenState extends State<SocialsScreen> {
 
       if (!mounted) return;
 
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => ResumeScreen(userId: widget.userId),
-        ),
-      );
+      NavigationHelper.navigateTo('/resume', arguments: widget.userId);
     } catch (e) {
       ScaffoldMessenger.of(
         context,

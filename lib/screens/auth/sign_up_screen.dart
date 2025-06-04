@@ -3,9 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:pronto/widgets/custom_text_field.dart';
 import 'package:pronto/constants.dart';
-import '../profile_setup/applicant/personal_details_screen.dart';
-import '../profile_setup/recruiter/company_selection_screen.dart';
-import 'sign_in_screen.dart';
+import 'package:pronto/router.dart';
 
 enum UserType { applicant, recruiter }
 
@@ -68,11 +66,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
         });
 
         if (mounted) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (context) => PersonalDetailsScreen(userId: userId),
-            ),
+          NavigationHelper.navigateAndReplace(
+            '/personal-details',
+            arguments: userId,
           );
         }
       } else {
@@ -87,11 +83,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
             });
 
         if (mounted) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (context) => CompanySelectionScreen(recruiterId: userId),
-            ),
+          NavigationHelper.navigateAndReplace(
+            '/company-selection',
+            arguments: userId,
           );
         }
       }
@@ -248,7 +242,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
             Icons.arrow_back_ios_rounded,
             color: AppColors.textPrimary,
           ),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () => NavigationHelper.goBack(),
         ),
       ),
       body: SafeArea(
@@ -384,12 +378,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       children: [
                         WidgetSpan(
                           child: GestureDetector(
-                            onTap: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => SigninScreen(),
-                              ),
-                            ),
+                            onTap: () =>
+                                NavigationHelper.navigateAndReplace('/sign-in'),
                             child: Text(
                               'Sign In',
                               style: Theme.of(context).textTheme.bodyMedium

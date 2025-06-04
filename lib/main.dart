@@ -2,30 +2,22 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:pronto/router.dart';
+import 'firebase_options.dart';
+import 'package:pronto/constants.dart';
+import 'package:pronto/models/userType_model.dart';
 import 'package:pronto/screens/onboarding/splash_screen.dart';
 import 'package:pronto/screens/onboarding/welcome_screen.dart';
-import 'package:pronto/screens/profile_setup/applicant/personal_details_screen.dart';
-import 'package:pronto/screens/profile_setup/applicant/designation_screen.dart';
-import 'package:pronto/screens/profile_setup/applicant/disabilities_screen.dart';
-import 'package:pronto/screens/profile_setup/applicant/location_screen.dart';
-import 'package:pronto/screens/profile_setup/applicant/intro_screen.dart';
-import 'package:pronto/screens/profile_setup/applicant/skills_screen.dart';
-import 'package:pronto/screens/profile_setup/applicant/social_screen.dart';
-import 'package:pronto/screens/profile_setup/applicant/resume_screen.dart';
-import 'package:pronto/screens/profile_setup/applicant/education_screen.dart';
-import 'package:pronto/screens/profile_setup/applicant/work_screen.dart';
-import 'package:pronto/screens/profile_setup/applicant/project_screen.dart';
-import 'package:pronto/screens/profile_setup/applicant/award_screen.dart';
 import 'package:pronto/widgets/navbar.dart';
-import 'package:pronto/models/userType_model.dart';
-import 'firebase_options.dart';
 
+// Entry point of app
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   runApp(const MyApp());
 }
 
+// Root widget of the application
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
@@ -33,12 +25,12 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'pronto',
-      navigatorKey: NavigationHelper.navigatorKey,
+      navigatorKey: NavigationHelper.navigatorKey, // for global navigation
       theme: ThemeData(
-        primaryColor: Color(0xFF0057B7),
+        primaryColor: AppColors.primary,
         colorScheme: ColorScheme.fromSwatch().copyWith(
-          primary: Color(0xFF0057B7),
-          secondary: Color(0xFFA6D3F2),
+          primary: AppColors.primary,
+          secondary: AppColors.secondary,
         ),
         splashFactory: NoSplash.splashFactory,
         highlightColor: Colors.transparent,
@@ -54,94 +46,13 @@ class MyApp extends StatelessWidget {
         ),
       ),
       debugShowCheckedModeBanner: false,
-      // Set up named routes with arguments
       initialRoute: '/',
-      onGenerateRoute: (settings) {
-        switch (settings.name) {
-          case '/':
-            return MaterialPageRoute(builder: (context) => const AuthWrapper());
-          case '/welcome':
-            return MaterialPageRoute(
-              builder: (context) => const WelcomeScreen(),
-            );
-          case '/home':
-            final Map<String, dynamic> args =
-                settings.arguments as Map<String, dynamic>;
-            final String userId = args['userId'] as String;
-            final UserType userType = args['userType'] as UserType;
-            return MaterialPageRoute(
-              builder: (context) => NavBar(userId: userId, userType: userType),
-            );
-          case '/personal-details':
-            final String userId = settings.arguments as String;
-            return MaterialPageRoute(
-              builder: (context) => PersonalDetailsScreen(userId: userId),
-            );
-          case '/designation':
-            final String userId = settings.arguments as String;
-            return MaterialPageRoute(
-              builder: (context) => DesignationScreen(userId: userId),
-            );
-          case '/disabilities':
-            final String userId = settings.arguments as String;
-            return MaterialPageRoute(
-              builder: (context) => DisabilityScreen(userId: userId),
-            );
-          case '/location':
-            final String userId = settings.arguments as String;
-            return MaterialPageRoute(
-              builder: (context) => LocationScreen(userId: userId),
-            );
-          case '/intro':
-            final String userId = settings.arguments as String;
-            return MaterialPageRoute(
-              builder: (context) => IntroScreen(userId: userId),
-            );
-          case '/skills':
-            final String userId = settings.arguments as String;
-            return MaterialPageRoute(
-              builder: (context) => SkillsScreen(userId: userId),
-            );
-          case '/social':
-            final String userId = settings.arguments as String;
-            return MaterialPageRoute(
-              builder: (context) => SocialsScreen(userId: userId),
-            );
-          case '/resume':
-            final String userId = settings.arguments as String;
-            return MaterialPageRoute(
-              builder: (context) => ResumeScreen(userId: userId),
-            );
-          case '/education':
-            final String userId = settings.arguments as String;
-            return MaterialPageRoute(
-              builder: (context) => EducationScreen(userId: userId),
-            );
-          case '/work':
-            final String userId = settings.arguments as String;
-            return MaterialPageRoute(
-              builder: (context) => WorkExperienceScreen(userId: userId),
-            );
-          case '/project':
-            final String userId = settings.arguments as String;
-            return MaterialPageRoute(
-              builder: (context) => ProjectExperienceScreen(userId: userId),
-            );
-          case '/award':
-            final String userId = settings.arguments as String;
-            return MaterialPageRoute(
-              builder: (context) => AwardsScreen(userId: userId),
-            );
-          default:
-            return MaterialPageRoute(
-              builder: (context) => const WelcomeScreen(),
-            );
-        }
-      },
+      onGenerateRoute: generateRoute,
     );
   }
 }
 
+// Determines what to show based on the user's authentication state
 class AuthWrapper extends StatelessWidget {
   const AuthWrapper({super.key});
 
@@ -150,7 +61,7 @@ class AuthWrapper extends StatelessWidget {
     return StreamBuilder<User?>(
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {
-        // Show loading screen while checking auth state
+        // Show splash screen while checking auth state
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const SplashScreen();
         }
@@ -158,13 +69,14 @@ class AuthWrapper extends StatelessWidget {
         if (snapshot.data == null) {
           return const WelcomeScreen();
         }
-        // User is signed in, check onboarding completion
+        // User is signed in, proceed to onboarding check
         return OnboardingChecker(user: snapshot.data!);
       },
     );
   }
 }
 
+// Checks if the user has completed onboarding and returns the appropriate screen
 class OnboardingChecker extends StatelessWidget {
   final User user;
 
@@ -175,31 +87,37 @@ class OnboardingChecker extends StatelessWidget {
     return FutureBuilder<DocumentSnapshot>(
       future: _fetchUserDocument(user.uid),
       builder: (context, snapshot) {
+        // Show splash screen while fetching user data
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const SplashScreen();
         }
-
+        // Handle errors or no data
         if (snapshot.hasError || !snapshot.hasData || !snapshot.data!.exists) {
           return const WelcomeScreen();
         }
-
+        // User data exists, determine user type and completed steps
         final userData = snapshot.data!.data() as Map<String, dynamic>;
         final String? userTypeStr = userData['userType'] as String?;
         final userType = UserType.values.firstWhere(
           (e) => e.toString().split('.').last == userTypeStr,
           orElse: () => UserType.applicant,
         );
-
+        // If user is a recruiter, go straight to navigation bar
         if (userType == UserType.recruiter) {
           return NavBar(userId: user.uid, userType: userType);
         }
-
+        // If user is an applicant, check completed steps
         final int completedSteps = userData['completedSteps'] ?? 1;
-        return _getScreenForStep(completedSteps, userType);
+        return getScreenForStep(
+          completedSteps: completedSteps,
+          userId: user.uid,
+          userType: userType,
+        );
       },
     );
   }
 
+  // Fetches user document from Firestore (checks both 'users' and 'recruiters' collections)
   Future<DocumentSnapshot> _fetchUserDocument(String uid) async {
     final userDoc = await FirebaseFirestore.instance
         .collection('users')
@@ -213,82 +131,5 @@ class OnboardingChecker extends StatelessWidget {
         .doc(uid)
         .get();
     return recruiterDoc;
-  }
-
-  Widget _getScreenForStep(int completedSteps, UserType userType) {
-    final String userId = user.uid;
-
-    switch (completedSteps) {
-      case 1:
-        return PersonalDetailsScreen(userId: userId);
-      case 2:
-        return DesignationScreen(userId: userId);
-      case 3:
-        return DisabilityScreen(userId: userId);
-      case 4:
-        return LocationScreen(userId: userId);
-      case 5:
-        return IntroScreen(userId: userId);
-      case 6:
-        return SkillsScreen(userId: userId);
-      case 7:
-        return SocialsScreen(userId: userId);
-      case 8:
-        return ResumeScreen(userId: userId);
-      case 9:
-        return EducationScreen(userId: userId);
-      case 10:
-        return WorkExperienceScreen(userId: userId);
-      case 11:
-        return ProjectExperienceScreen(userId: userId);
-      case 12:
-        return AwardsScreen(userId: userId);
-      default:
-        return NavBar(userId: userId, userType: userType);
-    }
-  }
-}
-
-// Navigation Helper Class
-class NavigationHelper {
-  static final GlobalKey<NavigatorState> navigatorKey =
-      GlobalKey<NavigatorState>();
-
-  // Navigate to a named route
-  static Future<dynamic> navigateTo(String routeName, {Object? arguments}) {
-    return navigatorKey.currentState!.pushNamed(
-      routeName,
-      arguments: arguments,
-    );
-  }
-
-  // Replace current route with a new one
-  static Future<dynamic> navigateAndReplace(
-    String routeName, {
-    Object? arguments,
-  }) {
-    return navigatorKey.currentState!.pushReplacementNamed(
-      routeName,
-      arguments: arguments,
-    );
-  }
-
-  // Clear all routes and navigate to a new one
-  static Future<dynamic> navigateAndClearStack(
-    String routeName, {
-    Object? arguments,
-  }) {
-    return navigatorKey.currentState!.pushNamedAndRemoveUntil(
-      routeName,
-      (Route<dynamic> route) => false,
-      arguments: arguments,
-    );
-  }
-
-  // Go back to previous screen
-  static void goBack() {
-    if (navigatorKey.currentState!.canPop()) {
-      navigatorKey.currentState!.pop();
-    }
   }
 }

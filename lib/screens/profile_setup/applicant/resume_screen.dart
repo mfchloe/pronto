@@ -6,7 +6,7 @@ import 'dart:io';
 import 'package:pronto/widgets/progress_indicator.dart';
 import 'package:pronto/widgets/custom_text_field.dart';
 import 'package:pronto/constants.dart';
-import 'education_screen.dart';
+import 'package:pronto/router.dart';
 
 class ResumeScreen extends StatefulWidget {
   final String? userId;
@@ -259,12 +259,7 @@ class _ResumeScreenState extends State<ResumeScreen> {
 
       if (!mounted) return;
 
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => EducationScreen(userId: widget.userId),
-        ),
-      );
+      NavigationHelper.navigateTo('/education', arguments: widget.userId);
     } catch (e) {
       ScaffoldMessenger.of(
         context,

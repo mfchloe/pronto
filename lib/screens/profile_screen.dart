@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:pronto/models/userType_model.dart';
-import 'package:pronto/screens/onboarding/welcome_screen.dart';
+import 'package:pronto/router.dart';
 
 class ProfileScreen extends StatelessWidget {
   final String userId;
@@ -200,13 +200,7 @@ class ProfileScreen extends StatelessWidget {
                           ),
                         );
                         // Navigate back to welcome screen
-                        // Navigate back to welcome screen (replace with your actual screen)
-                        Navigator.of(context).pushAndRemoveUntil(
-                          MaterialPageRoute(
-                            builder: (context) => const WelcomeScreen(),
-                          ),
-                          (Route<dynamic> route) => false,
-                        );
+                        NavigationHelper.navigateAndClearStack('/welcome');
                       }
                     } catch (e) {
                       if (context.mounted) {
