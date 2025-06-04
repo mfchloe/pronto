@@ -1,53 +1,49 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:pronto/widgets/custom_text_field.dart';
 import 'package:pronto/constants.dart';
+import 'package:pronto/widgets/custom_text_field.dart';
 import 'package:pronto/router.dart';
 
-class SigninScreen extends StatefulWidget {
-  const SigninScreen({super.key});
+class ForgotPasswordScreen extends StatefulWidget {
+  const ForgotPasswordScreen({super.key});
 
   @override
-  State<SigninScreen> createState() => _SigninScreenState();
+  State<ForgotPasswordScreen> createState() => _ForgotPasswordScreenState();
 }
 
-class _SigninScreenState extends State<SigninScreen> {
-  final _formKey = GlobalKey<FormState>();
+class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
-  bool _isLoading = false;
-  bool _obscurePassword = true;
+  final _formKey = GlobalKey<FormState>();
+  bool _isSending = false;
 
-  @override
-  void dispose() {
-    _emailController.dispose();
-    _passwordController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _signIn() async {
+  Future<void> _sendResetEmail() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() {
-      _isLoading = true;
+      _isSending = true;
     });
 
     try {
-      await FirebaseAuth.instance.signInWithEmailAndPassword(
+      await FirebaseAuth.instance.sendPasswordResetEmail(
         email: _emailController.text.trim(),
-        password: _passwordController.text,
       );
 
       if (mounted) {
-        await Future.delayed(const Duration(milliseconds: 100));
-        NavigationHelper.navigateAndClearStack('/');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Password reset email sent. Please check your inbox.',
+            ),
+          ),
+        );
+        NavigationHelper.navigateAndReplace('/sign-in');
       }
     } on FirebaseAuthException catch (e) {
-      String message = 'An error occurred. Please try again.';
+      String message = 'An error occurred.';
       if (e.code == 'user-not-found') {
         message = 'No user found for this email.';
-      } else if (e.code == 'wrong-password') {
-        message = 'Wrong password provided.';
+      } else if (e.code == 'invalid-email') {
+        message = 'The email address is not valid.';
       }
 
       if (mounted) {
@@ -58,10 +54,16 @@ class _SigninScreenState extends State<SigninScreen> {
     } finally {
       if (mounted) {
         setState(() {
-          _isLoading = false;
+          _isSending = false;
         });
       }
     }
+  }
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    super.dispose();
   }
 
   @override
@@ -88,7 +90,7 @@ class _SigninScreenState extends State<SigninScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Welcome Back',
+                  'Forgot Password',
                   style: Theme.of(context).textTheme.headlineLarge?.copyWith(
                     color: AppColors.textPrimary,
                     fontSize: 28,
@@ -96,7 +98,7 @@ class _SigninScreenState extends State<SigninScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Sign in to continue your job search',
+                  'Enter your email and we’ll send you a reset link.',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: AppColors.textSecondary,
                     fontSize: 16,
@@ -108,59 +110,21 @@ class _SigninScreenState extends State<SigninScreen> {
                   label: 'Email',
                   keyboardType: TextInputType.emailAddress,
                   validator: (value) {
-                    if (value?.isEmpty ?? true) {
+                    if (value == null || value.isEmpty) {
                       return 'Please enter your email';
                     }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 20),
-                CustomTextField(
-                  controller: _passwordController,
-                  label: 'Password',
-                  obscureText: _obscurePassword,
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      _obscurePassword
-                          ? Icons.visibility_off
-                          : Icons.visibility,
-                      color: AppColors.textSecondary,
-                    ),
-                    onPressed: () {
-                      setState(() {
-                        _obscurePassword = !_obscurePassword;
-                      });
-                    },
-                  ),
-                  validator: (value) {
-                    if (value?.isEmpty ?? true) {
-                      return 'Please enter your password';
+                    if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) {
+                      return 'Please enter a valid email address';
                     }
                     return null;
                   },
-                ),
-                const SizedBox(height: 12),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton(
-                    onPressed: () {
-                      NavigationHelper.navigateTo('/forgot-password');
-                    },
-                    child: Text(
-                      'Forgot Password?',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: AppColors.primary,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
                 ),
                 const Spacer(),
                 SizedBox(
                   width: double.infinity,
                   height: 56,
                   child: ElevatedButton(
-                    onPressed: _isLoading ? null : _signIn,
+                    onPressed: _isSending ? null : _sendResetEmail,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
                       foregroundColor: Colors.white,
@@ -168,10 +132,10 @@ class _SigninScreenState extends State<SigninScreen> {
                         borderRadius: BorderRadius.circular(16),
                       ),
                     ),
-                    child: _isLoading
+                    child: _isSending
                         ? const CircularProgressIndicator(color: Colors.white)
                         : const Text(
-                            'Sign In',
+                            'Send Reset Email',
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
