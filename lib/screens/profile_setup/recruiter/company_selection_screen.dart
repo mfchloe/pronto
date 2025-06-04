@@ -46,26 +46,23 @@ class _CompanySelectionScreenState extends State<CompanySelectionScreen> {
     try {
       final lowercaseQuery = query.trim().toLowerCase();
 
-      // Option 2: Contains-based search - fetch all companies and filter locally
+      // Contains-based search: fetch all companies and filter locally
       final results = await FirebaseFirestore.instance
           .collection('companies')
           .get();
 
-      final filteredDocs = results.docs
-          .where((doc) {
-            final data = doc.data();
+      final filteredDocs = results.docs.where((doc) {
+        final data = doc.data();
 
-            // Try both nameLower and name fields for more robust search
-            final nameLower = data['nameLower'] as String? ?? '';
-            final name = (data['name'] as String? ?? '').toLowerCase();
+        // Try both nameLower and name fields for more robust search
+        final nameLower = data['nameLower'] as String? ?? '';
+        final name = (data['name'] as String? ?? '').toLowerCase();
 
-            final matchesNameLower = nameLower.contains(lowercaseQuery);
-            final matchesName = name.contains(lowercaseQuery);
+        final matchesNameLower = nameLower.contains(lowercaseQuery);
+        final matchesName = name.contains(lowercaseQuery);
 
-            return matchesNameLower || matchesName;
-          })
-          .take(10)
-          .toList();
+        return matchesNameLower || matchesName;
+      }).toList();
 
       setState(() {
         _searchResults = filteredDocs;
@@ -186,7 +183,6 @@ class _CompanySelectionScreenState extends State<CompanySelectionScreen> {
               ),
               const SizedBox(height: 32),
 
-              // Search field with left-side icon
               CustomTextField(
                 controller: _searchController,
                 label: 'Search company name',
@@ -451,7 +447,6 @@ class _CompanySelectionScreenState extends State<CompanySelectionScreen> {
                 ),
               ),
 
-              // Add some bottom padding for better scroll experience
               const SizedBox(height: 32),
             ],
           ),

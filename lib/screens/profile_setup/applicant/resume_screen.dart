@@ -44,6 +44,7 @@ class _ResumeScreenState extends State<ResumeScreen> {
           .doc(widget.userId)
           .get();
 
+      // If the document exists and contains resume data, update the local map
       if (doc.exists && doc.data()?['resumes'] != null) {
         final resumesData = doc.data()!['resumes'] as Map<String, dynamic>;
         setState(() {
@@ -61,6 +62,7 @@ class _ResumeScreenState extends State<ResumeScreen> {
     }
   }
 
+  // Upload a resume to Firebase Storage and save its URL
   Future<void> _uploadResume(String type) async {
     try {
       // Pick file
@@ -92,7 +94,7 @@ class _ResumeScreenState extends State<ResumeScreen> {
 
         final uploadTask = storageRef.putFile(file);
 
-        // Show upload progress (optional)
+        // Show upload progress (in terminal)
         uploadTask.snapshotEvents.listen((TaskSnapshot snapshot) {
           double progress = snapshot.bytesTransferred / snapshot.totalBytes;
           print('Upload progress: ${(progress * 100).toStringAsFixed(2)}%');

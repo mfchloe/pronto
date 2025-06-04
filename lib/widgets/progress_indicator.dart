@@ -18,11 +18,12 @@ class CustomProgressIndicator extends StatelessWidget {
 
           return Container(
             margin: const EdgeInsets.symmetric(horizontal: 2),
-            width: isCurrent ? 24 : 8,
+            width: isCurrent ? 24 : 8, // wider if current step
             height: 8,
             decoration: BoxDecoration(
               color: isActive || isCurrent
-                  ? AppColors.primary
+                  ? AppColors
+                        .primary // blue if completed or current step
                   : AppColors.textSecondary.withValues(alpha: 77),
               borderRadius: BorderRadius.circular(4),
             ),

@@ -150,7 +150,7 @@ class _CreateCompanyScreenState extends State<CreateCompanyScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Company created successfully!')),
         );
-        // Navigate back to main flow or dashboard
+        // Navigate to home screen
         Navigator.pop(context);
         NavigationHelper.navigateAndClearStack(
           '/home',
