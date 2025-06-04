@@ -4,7 +4,7 @@ import 'package:pronto/widgets/progress_indicator.dart';
 import 'package:pronto/widgets/custom_text_field.dart';
 import 'package:pronto/constants.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
-import 'award_screen.dart';
+import 'package:pronto/router.dart';
 
 class ProjectExperienceScreen extends StatefulWidget {
   final String? userId;
@@ -157,12 +157,7 @@ class _ProjectExperienceScreenState extends State<ProjectExperienceScreen> {
 
       if (!mounted) return;
 
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => AwardsScreen(userId: widget.userId),
-        ),
-      );
+      NavigationHelper.navigateTo('/award', arguments: widget.userId);
 
       // For now, just show success message
       ScaffoldMessenger.of(context).showSnackBar(

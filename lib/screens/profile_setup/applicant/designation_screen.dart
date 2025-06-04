@@ -3,7 +3,7 @@ import 'package:pronto/constants.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:pronto/widgets/custom_dropdown_field.dart';
 import 'package:pronto/widgets/progress_indicator.dart';
-import 'disabilities_screen.dart';
+import 'package:pronto/router.dart';
 
 class DesignationScreen extends StatefulWidget {
   final String? userId;
@@ -48,12 +48,7 @@ class _DesignationScreenState extends State<DesignationScreen> {
 
       if (!mounted) return;
 
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => DisabilityScreen(userId: widget.userId),
-        ),
-      );
+      NavigationHelper.navigateTo('/disabilities', arguments: widget.userId);
     } catch (e) {
       ScaffoldMessenger.of(
         context,

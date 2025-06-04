@@ -4,7 +4,7 @@ import 'package:pronto/widgets/progress_indicator.dart';
 import 'package:pronto/widgets/custom_text_field.dart';
 import 'package:pronto/constants.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
-import 'work_screen.dart';
+import 'package:pronto/router.dart';
 
 class EducationScreen extends StatefulWidget {
   final String? userId;
@@ -155,12 +155,7 @@ class _EducationScreenState extends State<EducationScreen> {
 
       if (!mounted) return;
 
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => WorkExperienceScreen(userId: widget.userId),
-        ),
-      );
+      NavigationHelper.navigateTo('/work', arguments: widget.userId);
     } catch (e) {
       ScaffoldMessenger.of(
         context,

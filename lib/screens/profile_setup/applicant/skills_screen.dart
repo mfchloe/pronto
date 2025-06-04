@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:pronto/widgets/progress_indicator.dart';
 import 'package:pronto/constants.dart';
-import 'social_screen.dart';
+import 'package:pronto/router.dart';
 
 class SkillsScreen extends StatefulWidget {
   final String? userId;
@@ -83,12 +83,7 @@ class _SkillsScreenState extends State<SkillsScreen> {
 
       if (!mounted) return;
 
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => SocialsScreen(userId: widget.userId),
-        ),
-      );
+      NavigationHelper.navigateTo('/social', arguments: widget.userId);
     } catch (e) {
       ScaffoldMessenger.of(
         context,

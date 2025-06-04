@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:pronto/widgets/custom_text_field.dart';
 import 'package:pronto/constants.dart';
+import 'package:pronto/router.dart';
 
 class SigninScreen extends StatefulWidget {
   const SigninScreen({super.key});
@@ -32,15 +33,14 @@ class _SigninScreenState extends State<SigninScreen> {
     });
 
     try {
-      UserCredential userCredential = await FirebaseAuth.instance
-          .signInWithEmailAndPassword(
-            email: _emailController.text.trim(),
-            password: _passwordController.text,
-          );
+      await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+      );
 
       if (mounted) {
         await Future.delayed(const Duration(milliseconds: 100));
-        Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
+        NavigationHelper.navigateAndClearStack('/');
       }
     } on FirebaseAuthException catch (e) {
       String message = 'An error occurred. Please try again.';
@@ -76,7 +76,7 @@ class _SigninScreenState extends State<SigninScreen> {
             Icons.arrow_back_ios_rounded,
             color: AppColors.textPrimary,
           ),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () => NavigationHelper.goBack(),
         ),
       ),
       body: SafeArea(

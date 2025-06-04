@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:pronto/constants.dart';
-import '../auth/sign_up_screen.dart';
-import '../auth/sign_in_screen.dart';
+import 'package:pronto/router.dart';
 
 class WelcomeScreen extends StatelessWidget {
   const WelcomeScreen({super.key});
@@ -50,10 +49,7 @@ class WelcomeScreen extends StatelessWidget {
                 'Get Started',
                 AppColors.primary,
                 Colors.white,
-                () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const SignUpScreen()),
-                ),
+                () => NavigationHelper.navigateTo('/sign-up'),
               ),
 
               const SizedBox(height: 16),
@@ -62,10 +58,7 @@ class WelcomeScreen extends StatelessWidget {
                 'I already have an account',
                 Colors.transparent,
                 AppColors.textSecondary,
-                () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const SigninScreen()),
-                ),
+                () => NavigationHelper.navigateTo('/sign-in'),
                 outlined: true,
               ),
               const SizedBox(height: 32),

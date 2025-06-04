@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:pronto/widgets/progress_indicator.dart';
 import 'package:pronto/constants.dart';
-import 'skills_screen.dart';
+import 'package:pronto/router.dart';
 
 class IntroScreen extends StatefulWidget {
   final String? userId;
@@ -47,12 +47,7 @@ class _IntroScreenState extends State<IntroScreen> {
 
       if (!mounted) return;
 
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => SkillsScreen(userId: widget.userId),
-        ),
-      );
+      NavigationHelper.navigateTo('/skills', arguments: widget.userId);
     } catch (e) {
       ScaffoldMessenger.of(
         context,

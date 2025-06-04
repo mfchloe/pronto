@@ -3,7 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:pronto/widgets/custom_text_field.dart';
 import 'package:pronto/widgets/progress_indicator.dart';
 import 'package:pronto/constants.dart';
-import 'intro_screen.dart';
+import 'package:pronto/router.dart';
 
 class LocationScreen extends StatefulWidget {
   final String? userId;
@@ -45,12 +45,7 @@ class _LocationScreenState extends State<LocationScreen> {
 
       if (!mounted) return;
 
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => IntroScreen(userId: widget.userId),
-        ),
-      );
+      NavigationHelper.navigateTo('/intro', arguments: widget.userId);
     } catch (e) {
       ScaffoldMessenger.of(
         context,

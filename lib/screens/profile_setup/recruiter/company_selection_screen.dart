@@ -3,9 +3,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:pronto/widgets/custom_text_field.dart';
 import 'package:pronto/constants.dart';
-import 'create_company_screen.dart';
-import 'package:pronto/widgets/navbar.dart';
 import 'package:pronto/models/userType_model.dart';
+import 'package:pronto/router.dart';
 
 class CompanySelectionScreen extends StatefulWidget {
   final String? recruiterId;
@@ -136,14 +135,12 @@ class _CompanySelectionScreenState extends State<CompanySelectionScreen> {
             content: Text('Account setup completed successfully!'),
           ),
         );
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => NavBar(
-              userId: widget.recruiterId!,
-              userType: UserType.recruiter,
-            ),
-          ),
+        NavigationHelper.navigateAndClearStack(
+          '/home',
+          arguments: {
+            'userId': widget.recruiterId,
+            'userType': UserType.recruiter,
+          },
         );
       }
     } catch (e) {
@@ -406,13 +403,9 @@ class _CompanySelectionScreenState extends State<CompanySelectionScreen> {
                         size: 16,
                       ),
                       onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => CreateCompanyScreen(
-                              recruiterId: widget.recruiterId,
-                            ),
-                          ),
+                        NavigationHelper.navigateTo(
+                          '/create-company',
+                          arguments: widget.recruiterId,
                         );
                       },
                     ),

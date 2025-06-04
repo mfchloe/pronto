@@ -3,8 +3,7 @@ import 'package:flutter/material.dart';
 class ApplicantApplicationsScreen extends StatelessWidget {
   final String userId;
 
-  const ApplicantApplicationsScreen({Key? key, required this.userId})
-    : super(key: key);
+  const ApplicantApplicationsScreen({super.key, required this.userId});
 
   @override
   Widget build(BuildContext context) {
