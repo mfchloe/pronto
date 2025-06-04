@@ -4,6 +4,7 @@ import 'package:pronto/screens/onboarding/splash_screen.dart';
 import 'package:pronto/screens/onboarding/welcome_screen.dart';
 import 'package:pronto/screens/auth/sign_in_screen.dart';
 import 'package:pronto/screens/auth/sign_up_screen.dart';
+import 'package:pronto/screens/auth/forgot_password_screen.dart';
 import 'package:pronto/screens/profile_setup/applicant/personal_details_screen.dart';
 import 'package:pronto/screens/profile_setup/applicant/designation_screen.dart';
 import 'package:pronto/screens/profile_setup/applicant/disabilities_screen.dart';
@@ -35,6 +36,10 @@ Route<dynamic> generateRoute(RouteSettings settings) {
       return MaterialPageRoute(builder: (context) => const SigninScreen());
     case '/sign-up':
       return MaterialPageRoute(builder: (context) => const SignUpScreen());
+    case '/forgot-password':
+      return MaterialPageRoute(
+        builder: (context) => const ForgotPasswordScreen(),
+      );
     // Recruiter Profile Setup Screens
     case '/company-selection':
       final String userId = settings.arguments as String;
