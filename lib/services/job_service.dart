@@ -28,9 +28,7 @@ class JobService {
     }
 
     return query.snapshots().map((snapshot) {
-      return snapshot.docs.map((doc) {
-        return Job.fromMap(doc.data() as Map<String, dynamic>);
-      }).toList();
+      return snapshot.docs.map((doc) => Job.fromFirestore(doc)).toList();
     });
   }
 

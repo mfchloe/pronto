@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_card_swiper/flutter_card_swiper.dart';
 import 'package:pronto/services/job_service.dart';
 import 'package:pronto/models/job_model.dart';
 import 'package:pronto/widgets/job_card.dart';
@@ -12,38 +13,17 @@ class ApplicantHomeScreen extends StatefulWidget {
   _ApplicantHomeScreenState createState() => _ApplicantHomeScreenState();
 }
 
-class _ApplicantHomeScreenState extends State<ApplicantHomeScreen>
-    with TickerProviderStateMixin {
+class _ApplicantHomeScreenState extends State<ApplicantHomeScreen> {
   final JobService _jobService = JobService();
+  final CardSwiperController _cardController = CardSwiperController();
+
   List<Job> _jobs = [];
   List<Map<String, String?>> _jobCompanyData = [];
-  int _currentIndex = 0;
-  late AnimationController _animationController;
-  late Animation<Offset> _slideAnimation;
-  late Animation<double> _rotateAnimation;
-  late Animation<double> _scaleAnimation;
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _animationController = AnimationController(
-      duration: const Duration(milliseconds: 300),
-      vsync: this,
-    );
-
-    _slideAnimation =
-        Tween<Offset>(begin: Offset.zero, end: const Offset(2.0, 0.0)).animate(
-          CurvedAnimation(parent: _animationController, curve: Curves.easeOut),
-        );
-
-    _rotateAnimation = Tween<double>(begin: 0.0, end: 0.3).animate(
-      CurvedAnimation(parent: _animationController, curve: Curves.easeOut),
-    );
-
-    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.8).animate(
-      CurvedAnimation(parent: _animationController, curve: Curves.easeOut),
-    );
-
     _loadJobs();
   }
 
@@ -62,51 +42,61 @@ class _ApplicantHomeScreenState extends State<ApplicantHomeScreen>
           });
         }
       }
-      setState(() {
-        _jobs = jobList;
-        _jobCompanyData = jobCompanyData;
-      });
+
+      if (mounted) {
+        setState(() {
+          _jobs = jobList;
+          _jobCompanyData = jobCompanyData;
+          _isLoading = false;
+        });
+      }
     });
   }
 
   @override
   void dispose() {
-    _animationController.dispose();
+    _cardController.dispose();
     super.dispose();
   }
 
-  void _handleSwipe(SwipeDirection direction) async {
-    if (_currentIndex >= _jobs.length) return;
+  bool _onSwipe(
+    int previousIndex,
+    int? currentIndex,
+    CardSwiperDirection direction,
+  ) {
+    if (previousIndex >= _jobs.length) return false;
 
-    await _animationController.forward();
-
-    if (direction == SwipeDirection.right) {
-      // Apply to job
-      await _jobService.applyToJob(_jobs[_currentIndex].jobID, widget.userId);
-      _showSnackBar('Applied to ${_jobs[_currentIndex].title}!', Colors.green);
-    } else if (direction == SwipeDirection.left) {
-      // Reject job
-      _showSnackBar('Job rejected', Colors.red);
-    } else {
-      // Skip job
-      _showSnackBar('Job skipped', Colors.orange);
+    switch (direction) {
+      case CardSwiperDirection.right:
+        _handleApply(previousIndex);
+        break;
+      case CardSwiperDirection.left:
+        _handleReject(previousIndex);
+        break;
+      case CardSwiperDirection.top:
+        _handleSkip(previousIndex);
+        break;
+      case CardSwiperDirection.bottom:
+        _handleSkip(previousIndex);
+        break;
+      case CardSwiperDirection.none:
+        // No action needed for 'none'
+        break;
     }
 
-    setState(() {
-      _currentIndex++;
-    });
-
-    _animationController.reset();
+    return true;
   }
 
-  void _showSnackBar(String message, Color color) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: color,
-        duration: const Duration(seconds: 2),
-      ),
-    );
+  void _handleApply(int index) async {
+    await _jobService.applyToJob(_jobs[index].jobID, widget.userId);
+  }
+
+  void _handleReject(int index) {
+    // make sure job won't show up again
+  }
+
+  void _handleSkip(int index) {
+    // job can still show up again
   }
 
   @override
@@ -134,105 +124,77 @@ class _ApplicantHomeScreenState extends State<ApplicantHomeScreen>
               ),
             ),
 
-            // Card stack
+            // Card swiper
             Expanded(
-              child: _jobs.isEmpty
+              child: _isLoading
                   ? const Center(child: CircularProgressIndicator())
-                  : _currentIndex >= _jobs.length
+                  : _jobs.isEmpty
                   ? const Center(
                       child: Text(
-                        'No more jobs!',
+                        'No jobs available!',
                         style: TextStyle(fontSize: 18, color: Colors.grey),
                       ),
                     )
-                  : Stack(
-                      children: [
-                        // Background cards (stacked effect)
-                        for (int i = _currentIndex + 2; i >= _currentIndex; i--)
-                          if (i < _jobs.length)
-                            Positioned.fill(
-                              child: Transform.translate(
-                                offset: Offset(0, (i - _currentIndex) * 4.0),
-                                child: JobCard(
-                                  job: _jobs[i],
-                                  scale: 1.0 - (i - _currentIndex) * 0.05,
-                                  company: _jobCompanyData[i]['company'],
-                                  companyLogoUrl:
-                                      _jobCompanyData[i]['companyLogoUrl'],
-                                  onTap: i == _currentIndex
-                                      ? () {
-                                          Navigator.pushNamed(
-                                            context,
-                                            '/job-details',
-                                            arguments: _jobs[_currentIndex],
-                                          );
-                                        }
-                                      : null,
-                                ),
-                              ),
-                            ),
+                  : CardSwiper(
+                      controller: _cardController,
+                      cardsCount: _jobs.length,
+                      onSwipe: _onSwipe,
 
-                        // Animated top card
-                        if (_currentIndex < _jobs.length)
-                          AnimatedBuilder(
-                            animation: _animationController,
-                            builder: (context, child) {
-                              return Transform.translate(
-                                offset:
-                                    _slideAnimation.value *
-                                    MediaQuery.of(context).size.width,
-                                child: Transform.rotate(
-                                  angle: _rotateAnimation.value,
-                                  child: Transform.scale(
-                                    scale: _scaleAnimation.value,
-                                    child: GestureDetector(
-                                      onPanUpdate: (details) {
-                                        // Handle swipe gestures here if needed
-                                      },
-                                      child: JobCard(
-                                        job: _jobs[_currentIndex],
-                                        company:
-                                            _jobCompanyData[_currentIndex]['company'],
-                                        companyLogoUrl:
-                                            _jobCompanyData[_currentIndex]['companyLogoUrl'],
-                                        onTap: () {
-                                          Navigator.pushNamed(
-                                            context,
-                                            '/job-details',
-                                            arguments: _jobs[_currentIndex],
-                                          );
-                                        },
-                                      ),
-                                    ),
-                                  ),
-                                ),
+                      numberOfCardsDisplayed: 3,
+                      backCardOffset: const Offset(0, -40),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8.0,
+                        vertical: 8.0,
+                      ),
+                      cardBuilder:
+                          (
+                            context,
+                            index,
+                            horizontalThresholdPercentage,
+                            verticalThresholdPercentage,
+                          ) => JobCard(
+                            job: _jobs[index],
+                            company: _jobCompanyData[index]['company'],
+                            companyLogoUrl:
+                                _jobCompanyData[index]['companyLogoUrl'],
+                            onTap: () {
+                              Navigator.pushNamed(
+                                context,
+                                '/job-details',
+                                arguments: _jobs[index],
                               );
                             },
                           ),
-                      ],
                     ),
             ),
 
             // Action buttons
             Padding(
-              padding: const EdgeInsets.all(20.0),
+              padding: const EdgeInsets.all(15.0),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
                   _buildActionButton(
                     icon: Icons.close,
                     color: Colors.red,
-                    onPressed: () => _handleSwipe(SwipeDirection.left),
+                    onPressed: () {
+                      _cardController.swipe(CardSwiperDirection.left);
+                    },
                   ),
                   _buildActionButton(
                     icon: Icons.skip_next,
                     color: Colors.orange,
-                    onPressed: () => _handleSwipe(SwipeDirection.up),
+                    onPressed: () {
+                      _cardController.swipe(CardSwiperDirection.top);
+                    },
                   ),
+
                   _buildActionButton(
                     icon: Icons.check,
                     color: Colors.green,
-                    onPressed: () => _handleSwipe(SwipeDirection.right),
+                    onPressed: () {
+                      _cardController.swipe(CardSwiperDirection.right);
+                    },
                   ),
                 ],
               ),
@@ -263,5 +225,3 @@ class _ApplicantHomeScreenState extends State<ApplicantHomeScreen>
     );
   }
 }
-
-enum SwipeDirection { left, right, up }

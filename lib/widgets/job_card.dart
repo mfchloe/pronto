@@ -155,21 +155,24 @@ class JobCard extends StatelessWidget {
                   spacing: 6,
                   runSpacing: 6,
                   children: [
-                    _buildTag(
-                      icon: Icons.attach_money,
-                      text: job.payString,
-                      color: Colors.green,
-                    ),
-                    _buildTag(
-                      icon: Icons.access_time,
-                      text: job.duration,
-                      color: Colors.blue,
-                    ),
-                    _buildTag(
-                      icon: Icons.work,
-                      text: job.jobType,
-                      color: Colors.purple,
-                    ),
+                    if (job.payString.isNotEmpty)
+                      _buildTag(
+                        icon: Icons.attach_money,
+                        text: job.payString,
+                        color: Colors.green,
+                      ),
+                    if (job.duration.isNotEmpty)
+                      _buildTag(
+                        icon: Icons.access_time,
+                        text: job.duration,
+                        color: Colors.blue,
+                      ),
+                    if (job.jobType.isNotEmpty)
+                      _buildTag(
+                        icon: Icons.work,
+                        text: job.jobType,
+                        color: Colors.purple,
+                      ),
                   ],
                 ),
                 const SizedBox(height: 16),
@@ -202,7 +205,7 @@ class JobCard extends StatelessWidget {
                       ),
                       // Gradient overlay at bottom to indicate more content
                       Container(
-                        height: 20,
+                        height: 10,
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
                             begin: Alignment.topCenter,

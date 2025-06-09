@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 class Job {
   final String jobID;
   final String recruiterId;
@@ -47,6 +49,26 @@ class Job {
       datePosted: map['datePosted']?.toDate() ?? DateTime.now(),
       status: map['status'] ?? '',
       usersApplied: List<String>.from(map['usersApplied'] ?? []),
+    );
+  }
+
+  factory Job.fromFirestore(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
+    return Job(
+      jobID: doc.id,
+      recruiterId: data['recruiterId'] ?? '',
+      title: data['title'] ?? '',
+      description: data['description'] ?? '',
+      link: data['link'] ?? '',
+      jobType: data['jobType'] ?? '',
+      industry: data['industry'] ?? '',
+      location: data['location'] ?? '',
+      workArrangement: data['workArrangement'] ?? '',
+      duration: data['duration'] ?? '',
+      pay: (data['pay'] ?? 0).toDouble(),
+      datePosted: data['datePosted']?.toDate() ?? DateTime.now(),
+      status: data['status'] ?? '',
+      usersApplied: List<String>.from(data['usersApplied'] ?? []),
     );
   }
 
