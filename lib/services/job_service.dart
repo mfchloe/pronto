@@ -9,7 +9,13 @@ class JobService {
     String? location,
     String? jobType,
     String? workArrangement,
+    String? duration,
+    double? minSalary,
+    double? maxSalary,
+    List<String>? jobTitles,
+    String? userId,
   }) {
+    // Start with the base query for status = open jobs
     Query query = _firestore
         .collection('jobs')
         .where('status', isEqualTo: 'open');
@@ -26,15 +32,60 @@ class JobService {
     if (workArrangement != null && workArrangement.isNotEmpty) {
       query = query.where('workArrangement', isEqualTo: workArrangement);
     }
+    if (duration != null && duration.isNotEmpty) {
+      query = query.where('duration', isEqualTo: duration);
+    }
 
     return query.snapshots().map((snapshot) {
-      return snapshot.docs.map((doc) => Job.fromFirestore(doc)).toList();
+      List<Job> jobs = snapshot.docs
+          .map((doc) => Job.fromFirestore(doc))
+          .toList();
+
+      jobs = jobs.where((job) {
+        // Filter by salary range if specified
+        if (minSalary != null || maxSalary != null) {
+          double jobSalary = job.pay;
+          if (minSalary != null && jobSalary < minSalary) return false;
+          if (maxSalary != null && jobSalary > maxSalary) return false;
+        }
+
+        // Filter by job titles if specified
+        if (jobTitles != null && jobTitles.isNotEmpty) {
+          bool titleMatches = jobTitles.any(
+            (title) => job.title.toLowerCase().contains(title.toLowerCase()),
+          );
+          if (!titleMatches) return false;
+        }
+
+        return true;
+      }).toList();
+
+      return jobs;
     });
   }
 
-  Future<void> applyToJob(String jobID, String userID) async {
+  Future<void> applyToJob(String jobID, String userID, String? resume) async {
+    // Update usersApplied array in the job document
     await _firestore.collection('jobs').doc(jobID).update({
       'usersApplied': FieldValue.arrayUnion([userID]),
+    });
+
+    // Create an application document in application subcollection
+    await _firestore
+        .collection('users')
+        .doc(userID)
+        .collection('applications')
+        .add({
+          'jobId': jobID,
+          'status': 'applied',
+          'appliedAt': FieldValue.serverTimestamp(),
+          'resume': resume,
+        });
+  }
+
+  Future<void> markJobAsRejected(String jobID, String userID) async {
+    await _firestore.collection('jobs').doc(jobID).update({
+      'usersDeclined': FieldValue.arrayUnion([userID]),
     });
   }
 
@@ -66,6 +117,23 @@ class JobService {
       return companySnapshot.data();
     } catch (e) {
       print('Error fetching company info: $e');
+      return null;
+    }
+  }
+
+  Future<Map<String, dynamic>?> getUserFilters(String userId) async {
+    try {
+      final filtersDoc = await _firestore
+          .collection('userFilters')
+          .doc(userId)
+          .get();
+
+      if (filtersDoc.exists) {
+        return filtersDoc.data();
+      }
+      return null;
+    } catch (e) {
+      print('Error fetching user filters: $e');
       return null;
     }
   }
