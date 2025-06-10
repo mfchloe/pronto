@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:pronto/widgets/progress_indicator.dart';
-import 'package:pronto/constants.dart';
+import 'package:pronto/constants/colours.dart';
 import 'package:pronto/router.dart';
 
 class DisabilityScreen extends StatefulWidget {

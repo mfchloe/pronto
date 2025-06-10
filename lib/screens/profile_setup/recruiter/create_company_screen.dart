@@ -5,7 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:pronto/widgets/custom_text_field.dart';
 import 'package:pronto/widgets/custom_dropdown_field.dart';
-import 'package:pronto/constants.dart';
+import 'package:pronto/constants/colours.dart';
 import 'package:pronto/models/userType_model.dart';
 import 'package:pronto/router.dart';
 

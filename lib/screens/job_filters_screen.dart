@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:pronto/constants.dart';
+import 'package:pronto/constants/colours.dart';
 import 'package:pronto/widgets/custom_text_field.dart';
 import 'package:pronto/widgets/custom_dropdown_field.dart';
+import 'package:pronto/constants/job_attributes.dart';
 
 class JobFiltersScreen extends StatefulWidget {
   final String userId;
@@ -30,51 +31,6 @@ class _JobFiltersScreenState extends State<JobFiltersScreen> {
 
   // Controllers
   final TextEditingController _jobTitleController = TextEditingController();
-
-  // Dropdown options
-  final List<String> _industries = [
-    'Technology',
-    'Healthcare',
-    'Finance',
-    'Education',
-    'Manufacturing',
-    'Retail',
-    'Consulting',
-    'Marketing',
-    'Design',
-    'Sales',
-    'Engineering',
-    'Other',
-  ];
-
-  final List<String> _workArrangements = ['On-site', 'Remote', 'Hybrid'];
-
-  final List<String> _jobTypes = [
-    'Full-time',
-    'Part-time',
-    'Internship',
-    'Contract',
-    'Freelance',
-    'Temporary',
-  ];
-
-  final List<String> _durations = [
-    '1 month',
-    '3 months',
-    '6 months',
-    '1 year',
-    '2+ years',
-    'Permanent',
-  ];
-
-  final List<String> _jobRecencyOptions = [
-    'Any time',
-    'Last 24 hours',
-    'Last 3 days',
-    'Last week',
-    'Last 2 weeks',
-    'Last month',
-  ];
 
   @override
   void initState() {
@@ -270,7 +226,7 @@ class _JobFiltersScreenState extends State<JobFiltersScreen> {
               label: 'Industry',
               value: _selectedIndustry,
               hint: 'Select Industry',
-              options: _industries,
+              options: kIndustries,
               onChanged: (value) => setState(() => _selectedIndustry = value),
             ),
             const SizedBox(height: 24),
@@ -281,7 +237,7 @@ class _JobFiltersScreenState extends State<JobFiltersScreen> {
               label: 'Work Arrangement',
               value: _selectedWorkArrangement,
               hint: 'Select Work Arrangement',
-              options: _workArrangements,
+              options: kWorkArrangements,
               onChanged: (value) =>
                   setState(() => _selectedWorkArrangement = value),
             ),
@@ -293,7 +249,7 @@ class _JobFiltersScreenState extends State<JobFiltersScreen> {
               label: 'Job Type',
               value: _selectedJobType,
               hint: 'Select Job Type',
-              options: _jobTypes,
+              options: kJobTypes,
               onChanged: (value) => setState(() => _selectedJobType = value),
             ),
             const SizedBox(height: 24),
@@ -304,7 +260,7 @@ class _JobFiltersScreenState extends State<JobFiltersScreen> {
               label: 'Duration',
               value: _selectedDuration,
               hint: 'Select Duration',
-              options: _durations,
+              options: kDurations,
               onChanged: (value) => setState(() => _selectedDuration = value),
             ),
             const SizedBox(height: 24),
@@ -315,7 +271,7 @@ class _JobFiltersScreenState extends State<JobFiltersScreen> {
               label: 'Job Recency',
               value: _selectedJobRecency,
               hint: 'Select when job was posted',
-              options: _jobRecencyOptions,
+              options: kJobRecencyOptions,
               onChanged: (value) => setState(() => _selectedJobRecency = value),
             ),
             const SizedBox(height: 24),
