@@ -3,7 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:pronto/widgets/custom_text_field.dart';
 import 'package:pronto/widgets/custom_dropdown_field.dart';
 import 'package:pronto/widgets/progress_indicator.dart';
-import 'package:pronto/constants.dart';
+import 'package:pronto/constants/colours.dart';
 import 'package:pronto/router.dart';
 
 class PersonalDetailsScreen extends StatefulWidget {

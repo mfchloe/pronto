@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:pronto/models/job_model.dart';
-import 'package:pronto/constants.dart';
+import 'package:pronto/constants/colours.dart';
 import 'package:pronto/services/job_service.dart';
 
 class JobDetailsScreen extends StatefulWidget {

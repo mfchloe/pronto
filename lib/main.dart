@@ -4,7 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:pronto/router.dart';
 import 'firebase_options.dart';
-import 'package:pronto/constants.dart';
+import 'package:pronto/constants/colours.dart';
 import 'package:pronto/models/userType_model.dart';
 import 'package:pronto/screens/onboarding/splash_screen.dart';
 import 'package:pronto/screens/onboarding/welcome_screen.dart';
