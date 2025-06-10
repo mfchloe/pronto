@@ -15,6 +15,7 @@ class Job {
   final DateTime datePosted;
   final String status;
   final List<String> usersApplied;
+  final List<String> usersDeclined;
 
   Job({
     required this.jobID,
@@ -31,6 +32,7 @@ class Job {
     required this.datePosted,
     required this.status,
     required this.usersApplied,
+    required this.usersDeclined,
   });
 
   factory Job.fromMap(Map<String, dynamic> map) {
@@ -49,6 +51,7 @@ class Job {
       datePosted: map['datePosted']?.toDate() ?? DateTime.now(),
       status: map['status'] ?? '',
       usersApplied: List<String>.from(map['usersApplied'] ?? []),
+      usersDeclined: List<String>.from(map['usersDeclined'] ?? []),
     );
   }
 
@@ -69,6 +72,7 @@ class Job {
       datePosted: data['datePosted']?.toDate() ?? DateTime.now(),
       status: data['status'] ?? '',
       usersApplied: List<String>.from(data['usersApplied'] ?? []),
+      usersDeclined: List<String>.from(data['usersDeclined'] ?? []),
     );
   }
 

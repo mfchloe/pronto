@@ -19,8 +19,11 @@ import 'package:pronto/screens/profile_setup/applicant/project_screen.dart';
 import 'package:pronto/screens/profile_setup/recruiter/company_selection_screen.dart';
 import 'package:pronto/screens/profile_setup/recruiter/create_company_screen.dart';
 import 'package:pronto/screens/profile_setup/applicant/award_screen.dart';
+import 'package:pronto/screens/job_details_screen.dart';
+import 'package:pronto/screens/job_filters_screen.dart';
 import 'package:pronto/widgets/navbar.dart';
 import 'package:pronto/models/userType_model.dart' as user_type_model;
+import 'package:pronto/models/job_model.dart';
 
 Route<dynamic> generateRoute(RouteSettings settings) {
   switch (settings.name) {
@@ -121,6 +124,18 @@ Route<dynamic> generateRoute(RouteSettings settings) {
           args['userType'] as user_type_model.UserType;
       return MaterialPageRoute(
         builder: (context) => NavBar(userId: userId, userType: userType),
+      );
+    // Applicant Home Screen
+    case '/job-filters':
+      final String userId = settings.arguments as String;
+      return MaterialPageRoute(
+        builder: (context) => JobFiltersScreen(userId: userId),
+      );
+    // Job Details Screen
+    case '/job-details':
+      final Job job = settings.arguments as Job;
+      return MaterialPageRoute(
+        builder: (context) => JobDetailsScreen(job: job),
       );
     default:
       return MaterialPageRoute(builder: (context) => const WelcomeScreen());
