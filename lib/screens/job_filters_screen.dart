@@ -26,7 +26,8 @@ class _JobFiltersScreenState extends State<JobFiltersScreen> {
   String? _selectedJobRecency;
   double _minSalary = 0;
   double _maxSalary = 50000;
-  String? _selectedResume;
+  String? _selectedResumeKey;
+  String? _selectedResumeUrl;
   Map<String, dynamic> _userResumes = {};
 
   // Controllers
@@ -59,7 +60,6 @@ class _JobFiltersScreenState extends State<JobFiltersScreen> {
   }
 
   void _loadSavedFilters() async {
-    // Load previously saved filters if any
     try {
       final filtersDoc = await _firestore
           .collection('userFilters')
@@ -74,25 +74,47 @@ class _JobFiltersScreenState extends State<JobFiltersScreen> {
           _selectedWorkArrangement = filters['workArrangement'];
           _selectedJobType = filters['jobType'];
           _selectedDuration = filters['duration'];
-          _selectedJobRecency =
-              filters['jobRecency'] ?? 'Any time'; // Load saved recency filter
+          _selectedJobRecency = filters['jobRecency'] ?? 'Any time';
           _minSalary = (filters['minSalary'] ?? 0).toDouble();
           _maxSalary = (filters['maxSalary'] ?? 50000).toDouble();
-          _selectedResume = filters['selectedResume'] ?? 'General Resume';
+
+          // Handle resume data - check for both old and new format
+          if (filters['resumeUrl'] != null) {
+            _selectedResumeUrl = filters['resumeUrl'];
+            _selectedResumeKey = filters['resumeType'] ?? 'General';
+          } else if (filters['selectedResume'] != null) {
+            // Legacy format - try to find matching resume URL
+            _selectedResumeKey = filters['selectedResume'];
+            if (_userResumes.containsKey(_selectedResumeKey)) {
+              _selectedResumeUrl = _userResumes[_selectedResumeKey]?['url'];
+            }
+          } else {
+            // Default to General Resume
+            _selectedResumeKey = 'General';
+            if (_userResumes.containsKey('General')) {
+              _selectedResumeUrl = _userResumes['General']?['url'];
+            }
+          }
         });
       } else {
         // Set default values if no saved filters
         setState(() {
-          _selectedResume = 'General Resume';
+          _selectedResumeKey = 'General';
           _selectedJobRecency = 'Any time';
+          if (_userResumes.containsKey('General')) {
+            _selectedResumeUrl = _userResumes['General']?['url'];
+          }
         });
       }
     } catch (e) {
       debugPrint('Error loading saved filters: $e');
       // Set default values on error
       setState(() {
-        _selectedResume = 'General Resume';
+        _selectedResumeKey = 'General';
         _selectedJobRecency = 'Any time';
+        if (_userResumes.containsKey('General')) {
+          _selectedResumeUrl = _userResumes['General']?['url'];
+        }
       });
     }
   }
@@ -107,7 +129,10 @@ class _JobFiltersScreenState extends State<JobFiltersScreen> {
       _selectedJobRecency = 'Any time';
       _minSalary = 0;
       _maxSalary = 50000;
-      _selectedResume = 'General Resume';
+      _selectedResumeKey = 'General';
+      if (_userResumes.containsKey('General')) {
+        _selectedResumeUrl = _userResumes['General']?['url'];
+      }
     });
     _jobTitleController.clear();
   }
@@ -123,14 +148,15 @@ class _JobFiltersScreenState extends State<JobFiltersScreen> {
         'jobRecency': _selectedJobRecency,
         'minSalary': _minSalary,
         'maxSalary': _maxSalary,
-        'selectedResume': _selectedResume,
+        'resumeType': _selectedResumeKey,
+        'resumeUrl': _selectedResumeUrl,
         'updatedAt': FieldValue.serverTimestamp(),
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Filters saved successfully!')),
       );
-      Navigator.pop(context);
+      Navigator.pop(context, true);
     } catch (e) {
       ScaffoldMessenger.of(
         context,
@@ -427,10 +453,13 @@ class _JobFiltersScreenState extends State<JobFiltersScreen> {
                     itemBuilder: (context, index) {
                       final key = _userResumes.keys.elementAt(index);
                       final resume = _userResumes[key];
-                      final isSelected = _selectedResume == key;
+                      final isSelected = _selectedResumeKey == key;
 
                       return GestureDetector(
-                        onTap: () => setState(() => _selectedResume = key),
+                        onTap: () => setState(() {
+                          _selectedResumeKey = key;
+                          _selectedResumeUrl = resume['url'];
+                        }),
                         child: Container(
                           width: 180,
                           padding: const EdgeInsets.all(10),

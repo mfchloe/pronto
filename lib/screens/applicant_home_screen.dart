@@ -5,6 +5,7 @@ import 'package:pronto/models/job_model.dart';
 import 'package:pronto/widgets/job_card.dart';
 import 'package:pronto/screens/job_filters_screen.dart';
 import 'package:pronto/router.dart';
+import 'package:pronto/constants/colours.dart';
 import 'dart:async';
 
 class ApplicantHomeScreen extends StatefulWidget {
@@ -24,7 +25,11 @@ class _ApplicantHomeScreenState extends State<ApplicantHomeScreen> {
   List<Map<String, String?>> _jobCompanyData = [];
   bool _isLoading = true;
   Map<String, dynamic>? _currentFilters;
-  String? _resume;
+  String? _resumeUrl;
+  int _currentCardIndex = 0;
+
+  // Track jobs that have been swiped in this session
+  Set<String> _swipedJobIds = {};
 
   // Auto-swipe functionality
   bool _isAutoSwipeEnabled = false;
@@ -41,7 +46,7 @@ class _ApplicantHomeScreenState extends State<ApplicantHomeScreen> {
     // Load user filters first
     _currentFilters = await _jobService.getUserFilters(widget.userId);
     if (_currentFilters != null) {
-      _resume = _currentFilters!['resume'];
+      _resumeUrl = _currentFilters!['resumeUrl'];
     }
     _loadJobs();
   }
@@ -53,6 +58,7 @@ class _ApplicantHomeScreenState extends State<ApplicantHomeScreen> {
       jobType: _currentFilters?['jobType'],
       workArrangement: _currentFilters?['workArrangement'],
       duration: _currentFilters?['duration'],
+      jobRecency: _currentFilters?['jobRecency'],
       minSalary: _currentFilters?['minSalary']?.toDouble(),
       maxSalary: _currentFilters?['maxSalary']?.toDouble(),
       jobTitles: _currentFilters?['jobTitles'] != null
@@ -61,29 +67,65 @@ class _ApplicantHomeScreenState extends State<ApplicantHomeScreen> {
       userId: widget.userId,
     );
 
-    jobStream.listen((jobs) async {
-      List<Job> jobList = [];
-      List<Map<String, String?>> jobCompanyData = [];
+    jobStream.listen(
+      (jobs) async {
+        List<Job> jobList = [];
+        List<Map<String, String?>> jobCompanyData = [];
 
-      for (var job in jobs) {
-        final companyData = await _jobService.getCompanyInfoFromJob(job);
-        if (companyData != null) {
-          jobList.add(job);
-          jobCompanyData.add({
-            'company': companyData['name'],
-            'companyLogoUrl': companyData['logoUrl'],
+        for (var job in jobs) {
+          final companyData = await _jobService.getCompanyInfoFromJob(job);
+          if (companyData != null) {
+            jobList.add(job);
+            jobCompanyData.add({
+              'company': companyData['name'],
+              'companyLogoUrl': companyData['logoUrl'],
+            });
+          }
+        }
+
+        if (mounted) {
+          // Calculate how many jobs we've lost due to filtering
+          int previousJobCount = _jobs.length;
+          int currentJobCount = jobList.length;
+
+          setState(() {
+            _jobs = jobList;
+            _jobCompanyData = jobCompanyData;
+            _isLoading = false;
+
+            // Adjust current index based on how many jobs were removed
+            if (previousJobCount > currentJobCount && _currentCardIndex > 0) {
+              int jobsRemoved = previousJobCount - currentJobCount;
+              _currentCardIndex = (_currentCardIndex - jobsRemoved).clamp(
+                0,
+                jobList.length,
+              );
+              print(
+                'Jobs reduced from $previousJobCount to $currentJobCount, adjusted index to $_currentCardIndex',
+              );
+            }
+
+            // If we have no more jobs, stop auto-swipe
+            if (jobList.isEmpty || _currentCardIndex >= jobList.length) {
+              print('No more jobs available, stopping auto-swipe');
+              _stopAutoSwipe();
+            }
           });
         }
-      }
-
-      if (mounted) {
-        setState(() {
-          _jobs = jobList;
-          _jobCompanyData = jobCompanyData;
-          _isLoading = false;
-        });
-      }
-    });
+      },
+      onError: (error) {
+        print('Error loading jobs: $error');
+        if (mounted) {
+          setState(() {
+            _jobs = [];
+            _jobCompanyData = [];
+            _isLoading = false;
+            _currentCardIndex = 0;
+          });
+          _stopAutoSwipe();
+        }
+      },
+    );
   }
 
   void _toggleAutoSwipe() {
@@ -100,17 +142,33 @@ class _ApplicantHomeScreenState extends State<ApplicantHomeScreen> {
 
   void _startAutoSwipe() {
     _autoSwipeTimer = Timer.periodic(_autoSwipeInterval, (timer) {
-      if (_jobs.isNotEmpty && mounted) {
-        _cardController.swipe(CardSwiperDirection.right);
-      } else {
+      if (!mounted || !_isAutoSwipeEnabled) {
         _stopAutoSwipe();
+        return;
       }
+
+      // Check if there are still cards to swipe
+      if (_jobs.isEmpty || _currentCardIndex >= _jobs.length) {
+        print(
+          'No more cards to swipe. Current index: $_currentCardIndex, Jobs length: ${_jobs.length}',
+        );
+        _stopAutoSwipe();
+        return;
+      }
+
+      print('Auto-swiping at index $_currentCardIndex of ${_jobs.length}');
+      _cardController.swipe(CardSwiperDirection.right);
     });
   }
 
   void _stopAutoSwipe() {
     _autoSwipeTimer?.cancel();
     _autoSwipeTimer = null;
+    if (_isAutoSwipeEnabled) {
+      setState(() {
+        _isAutoSwipeEnabled = false;
+      });
+    }
   }
 
   @override
@@ -125,8 +183,26 @@ class _ApplicantHomeScreenState extends State<ApplicantHomeScreen> {
     int? currentIndex,
     CardSwiperDirection direction,
   ) {
-    if (previousIndex >= _jobs.length) return false;
+    print(
+      'Swipe event - Previous: $previousIndex, Current: $currentIndex, Direction: $direction, Jobs length: ${_jobs.length}',
+    );
 
+    // Validate previousIndex to prevent out-of-bounds access
+    if (previousIndex < 0 || previousIndex >= _jobs.length) {
+      print(
+        'Invalid previousIndex: $previousIndex for jobs length: ${_jobs.length}',
+      );
+      return false;
+    }
+
+    // Track this job as swiped
+    String swipedJobId = _jobs[previousIndex].jobID;
+    _swipedJobIds.add(swipedJobId);
+    print(
+      'Added job ${swipedJobId} to swiped jobs. Total swiped: ${_swipedJobIds.length}',
+    );
+
+    // Handle the swipe action
     switch (direction) {
       case CardSwiperDirection.right:
         _handleApply(previousIndex);
@@ -135,29 +211,63 @@ class _ApplicantHomeScreenState extends State<ApplicantHomeScreen> {
         _handleReject(previousIndex);
         break;
       case CardSwiperDirection.top:
+        // Skip action - no backend call needed but still track as swiped
         break;
       case CardSwiperDirection.bottom:
         break;
       case CardSwiperDirection.none:
-        // No action needed for 'none'
         break;
     }
 
-    // Stop auto-swipe if we've run out of jobs
-    if (currentIndex == null && _isAutoSwipeEnabled) {
-      _toggleAutoSwipe();
+    // Update current card index
+    if (currentIndex != null && currentIndex >= 0) {
+      _currentCardIndex = currentIndex;
+    } else {
+      // If currentIndex is null, we've reached the end
+      _currentCardIndex = _jobs.length;
+    }
+
+    print('Updated current card index to: $_currentCardIndex');
+
+    // Stop auto-swipe if we've run out of cards
+    if (_currentCardIndex >= _jobs.length) {
+      print('Reached end of cards, stopping auto-swipe');
+      _stopAutoSwipe();
     }
 
     return true;
   }
 
   void _handleApply(int index) async {
-    await _jobService.applyToJob(_jobs[index].jobID, widget.userId, _resume);
+    // Double-check bounds before accessing
+    if (index >= 0 && index < _jobs.length) {
+      try {
+        await _jobService.applyToJob(
+          _jobs[index].jobID,
+          widget.userId,
+          _resumeUrl,
+        );
+        print('Applied to job at index $index');
+      } catch (e) {
+        print('Error applying to job: $e');
+      }
+    } else {
+      print('Invalid index for apply: $index');
+    }
   }
 
   void _handleReject(int index) async {
-    // Mark job as rejected so it won't show up again
-    await _jobService.markJobAsRejected(_jobs[index].jobID, widget.userId);
+    // Double-check bounds before accessing
+    if (index >= 0 && index < _jobs.length) {
+      try {
+        await _jobService.markJobAsRejected(_jobs[index].jobID, widget.userId);
+        print('Rejected job at index $index');
+      } catch (e) {
+        print('Error rejecting job: $e');
+      }
+    } else {
+      print('Invalid index for reject: $index');
+    }
   }
 
   void _navigateToFilters() async {
@@ -170,6 +280,9 @@ class _ApplicantHomeScreenState extends State<ApplicantHomeScreen> {
 
     // Reload jobs with updated filters when returning from filters screen
     if (result != null || result == true) {
+      // Stop auto-swipe when reloading and clear swiped jobs
+      _stopAutoSwipe();
+      _swipedJobIds.clear(); // Reset swiped jobs when changing filters
       setState(() {
         _isLoading = true;
       });
@@ -245,48 +358,6 @@ class _ApplicantHomeScreenState extends State<ApplicantHomeScreen> {
               ),
             ),
 
-            // Active filters display
-            if (_currentFilters != null && _hasActiveFilters())
-              Container(
-                margin: const EdgeInsets.symmetric(horizontal: 16),
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.blue.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.blue.withOpacity(0.3)),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.filter_alt, color: Colors.blue, size: 16),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        _getActiveFiltersText(),
-                        style: const TextStyle(
-                          color: Colors.blue,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                    GestureDetector(
-                      onTap: _navigateToFilters,
-                      child: const Text(
-                        'Edit',
-                        style: TextStyle(
-                          color: Colors.blue,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          decoration: TextDecoration.underline,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-            const SizedBox(height: 8),
-
             // Card swiper
             Expanded(
               child: _isLoading
@@ -303,7 +374,9 @@ class _ApplicantHomeScreenState extends State<ApplicantHomeScreen> {
                           ),
                           const SizedBox(height: 16),
                           Text(
-                            'No jobs available!',
+                            _swipedJobIds.isEmpty
+                                ? 'No jobs available!'
+                                : 'No more jobs!',
                             style: TextStyle(
                               fontSize: 18,
                               color: Colors.grey[600],
@@ -312,7 +385,9 @@ class _ApplicantHomeScreenState extends State<ApplicantHomeScreen> {
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            'Try adjusting your filters',
+                            _swipedJobIds.isEmpty
+                                ? 'Try adjusting your filters'
+                                : 'You\'ve seen all available jobs',
                             style: TextStyle(
                               fontSize: 14,
                               color: Colors.grey[500],
@@ -320,8 +395,19 @@ class _ApplicantHomeScreenState extends State<ApplicantHomeScreen> {
                           ),
                           const SizedBox(height: 16),
                           ElevatedButton(
-                            onPressed: _navigateToFilters,
-                            child: const Text('Update Filters'),
+                            onPressed: () {
+                              _swipedJobIds.clear(); // Clear swiped jobs
+                              _navigateToFilters();
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              foregroundColor: Colors.white,
+                            ),
+                            child: Text(
+                              _swipedJobIds.isEmpty
+                                  ? 'Update Filters'
+                                  : 'Change Filters',
+                            ),
                           ),
                         ],
                       ),
@@ -330,7 +416,9 @@ class _ApplicantHomeScreenState extends State<ApplicantHomeScreen> {
                       controller: _cardController,
                       cardsCount: _jobs.length,
                       onSwipe: _onSwipe,
-                      numberOfCardsDisplayed: 3,
+                      numberOfCardsDisplayed: _jobs.length >= 3
+                          ? 3
+                          : _jobs.length,
                       backCardOffset: const Offset(0, -40),
                       padding: const EdgeInsets.symmetric(
                         horizontal: 8.0,
@@ -342,16 +430,25 @@ class _ApplicantHomeScreenState extends State<ApplicantHomeScreen> {
                             index,
                             horizontalThresholdPercentage,
                             verticalThresholdPercentage,
-                          ) => JobCard(
-                            job: _jobs[index],
-                            company: _jobCompanyData[index]['company'],
-                            companyLogoUrl:
-                                _jobCompanyData[index]['companyLogoUrl'],
-                            onTap: () => NavigationHelper.navigateTo(
-                              '/job-details',
-                              arguments: _jobs[index],
-                            ),
-                          ),
+                          ) {
+                            // Additional safety check in cardBuilder
+                            if (index < 0 ||
+                                index >= _jobs.length ||
+                                index >= _jobCompanyData.length) {
+                              return Container(); // Return empty container for invalid indices
+                            }
+
+                            return JobCard(
+                              job: _jobs[index],
+                              company: _jobCompanyData[index]['company'],
+                              companyLogoUrl:
+                                  _jobCompanyData[index]['companyLogoUrl'],
+                              onTap: () => NavigationHelper.navigateTo(
+                                '/job-details',
+                                arguments: _jobs[index],
+                              ),
+                            );
+                          },
                     ),
             ),
 
@@ -364,23 +461,29 @@ class _ApplicantHomeScreenState extends State<ApplicantHomeScreen> {
                   _buildActionButton(
                     icon: Icons.close,
                     color: Colors.red,
-                    onPressed: () {
-                      _cardController.swipe(CardSwiperDirection.left);
-                    },
+                    onPressed: _jobs.isEmpty
+                        ? null
+                        : () {
+                            _cardController.swipe(CardSwiperDirection.left);
+                          },
                   ),
                   _buildActionButton(
                     icon: Icons.skip_next,
                     color: Colors.orange,
-                    onPressed: () {
-                      _cardController.swipe(CardSwiperDirection.top);
-                    },
+                    onPressed: _jobs.isEmpty
+                        ? null
+                        : () {
+                            _cardController.swipe(CardSwiperDirection.top);
+                          },
                   ),
                   _buildActionButton(
                     icon: Icons.check,
                     color: Colors.green,
-                    onPressed: () {
-                      _cardController.swipe(CardSwiperDirection.right);
-                    },
+                    onPressed: _jobs.isEmpty
+                        ? null
+                        : () {
+                            _cardController.swipe(CardSwiperDirection.right);
+                          },
                   ),
                 ],
               ),
@@ -394,74 +497,27 @@ class _ApplicantHomeScreenState extends State<ApplicantHomeScreen> {
   Widget _buildActionButton({
     required IconData icon,
     required Color color,
-    required VoidCallback onPressed,
+    required VoidCallback? onPressed, // Made nullable
   }) {
     return Container(
       width: 60,
       height: 60,
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withOpacity(onPressed != null ? 0.1 : 0.05),
         shape: BoxShape.circle,
-        border: Border.all(color: color, width: 2),
+        border: Border.all(
+          color: onPressed != null ? color : color.withOpacity(0.3),
+          width: 2,
+        ),
       ),
       child: IconButton(
         onPressed: onPressed,
-        icon: Icon(icon, color: color, size: 28),
+        icon: Icon(
+          icon,
+          color: onPressed != null ? color : color.withOpacity(0.3),
+          size: 28,
+        ),
       ),
     );
-  }
-
-  bool _hasActiveFilters() {
-    if (_currentFilters == null) return false;
-
-    return (_currentFilters!['industry'] != null &&
-            _currentFilters!['industry'].isNotEmpty) ||
-        (_currentFilters!['jobType'] != null &&
-            _currentFilters!['jobType'].isNotEmpty) ||
-        (_currentFilters!['workArrangement'] != null &&
-            _currentFilters!['workArrangement'].isNotEmpty) ||
-        (_currentFilters!['duration'] != null &&
-            _currentFilters!['duration'].isNotEmpty) ||
-        (_currentFilters!['jobTitles'] != null &&
-            (_currentFilters!['jobTitles'] as List).isNotEmpty) ||
-        (_currentFilters!['minSalary'] != null &&
-            _currentFilters!['minSalary'] > 0) ||
-        (_currentFilters!['maxSalary'] != null &&
-            _currentFilters!['maxSalary'] < 200000) ||
-        (_currentFilters!['resume'] != null &&
-            _currentFilters!['resume'].isNotEmpty);
-  }
-
-  String _getActiveFiltersText() {
-    List<String> activeFilters = [];
-
-    if (_currentFilters!['industry'] != null &&
-        _currentFilters!['industry'].isNotEmpty) {
-      activeFilters.add(_currentFilters!['industry']);
-    }
-    if (_currentFilters!['jobType'] != null &&
-        _currentFilters!['jobType'].isNotEmpty) {
-      activeFilters.add(_currentFilters!['jobType']);
-    }
-    if (_currentFilters!['workArrangement'] != null &&
-        _currentFilters!['workArrangement'].isNotEmpty) {
-      activeFilters.add(_currentFilters!['workArrangement']);
-    }
-    if (_currentFilters!['jobTitles'] != null &&
-        (_currentFilters!['jobTitles'] as List).isNotEmpty) {
-      activeFilters.add(
-        '${(_currentFilters!['jobTitles'] as List).length} job titles',
-      );
-    }
-
-    if (activeFilters.isEmpty) {
-      return 'Filters applied';
-    }
-
-    if (activeFilters.length <= 2) {
-      return activeFilters.join(', ');
-    } else {
-      return '${activeFilters.take(2).join(', ')} +${activeFilters.length - 2} more';
-    }
   }
 }

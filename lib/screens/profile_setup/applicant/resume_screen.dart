@@ -250,6 +250,7 @@ class _ResumeScreenState extends State<ResumeScreen> {
     setState(() => _isLoading = true);
 
     try {
+      // Save resumes in user document
       await FirebaseFirestore.instance
           .collection('users')
           .doc(widget.userId)
@@ -258,6 +259,18 @@ class _ResumeScreenState extends State<ResumeScreen> {
             'completedSteps': 8,
             'updatedAt': FieldValue.serverTimestamp(),
           });
+
+      // Save general resume to user filters
+      final generalResume = _resumes['General'];
+      if (generalResume != null && generalResume['url']?.isNotEmpty == true) {
+        await FirebaseFirestore.instance
+            .collection('userFilters')
+            .doc(widget.userId)
+            .set({
+              'resumeType': 'General',
+              'resumeUrl': generalResume['url'],
+            }, SetOptions(merge: true));
+      }
 
       if (!mounted) return;
 
