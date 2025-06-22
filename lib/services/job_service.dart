@@ -5,35 +5,39 @@ class JobService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   Stream<List<Job>> getJobs({
+    String? userId,
+    List<String>? jobTitles,
     String? industry,
-    String? location,
-    String? jobType,
     String? workArrangement,
+    String? jobType,
     String? duration,
+    String? jobRecency,
     double? minSalary,
     double? maxSalary,
-    List<String>? jobTitles,
-    String? userId,
   }) {
     // Start with the base query for status = open jobs
     Query query = _firestore
         .collection('jobs')
         .where('status', isEqualTo: 'open');
 
+    // Apply filters from firebase
     if (industry != null && industry.isNotEmpty) {
       query = query.where('industry', isEqualTo: industry);
-    }
-    if (location != null && location.isNotEmpty) {
-      query = query.where('location', isEqualTo: location);
-    }
-    if (jobType != null && jobType.isNotEmpty) {
-      query = query.where('jobType', isEqualTo: jobType);
     }
     if (workArrangement != null && workArrangement.isNotEmpty) {
       query = query.where('workArrangement', isEqualTo: workArrangement);
     }
+    if (jobType != null && jobType.isNotEmpty) {
+      query = query.where('jobType', isEqualTo: jobType);
+    }
     if (duration != null && duration.isNotEmpty) {
       query = query.where('duration', isEqualTo: duration);
+    }
+
+    // Apply job recency filter if specified
+    if (jobRecency != null && jobRecency != 'Any time') {
+      DateTime cutoffDate = _getJobRecencyCutoffDate(jobRecency);
+      query = query.where('datePosted', isGreaterThanOrEqualTo: cutoffDate);
     }
 
     return query.snapshots().map((snapshot) {
@@ -42,6 +46,14 @@ class JobService {
           .toList();
 
       jobs = jobs.where((job) {
+        // Filter out jobs yser has already applied or declined
+        if (userId != null) {
+          if (job.usersApplied.contains(userId) ||
+              job.usersDeclined.contains(userId)) {
+            return false;
+          }
+        }
+
         // Filter by salary range if specified
         if (minSalary != null || maxSalary != null) {
           double jobSalary = job.pay;
@@ -60,11 +72,37 @@ class JobService {
         return true;
       }).toList();
 
+      // Sort jobs by date posted (newest first)
+      jobs.sort((a, b) => b.datePosted.compareTo(a.datePosted));
+
       return jobs;
     });
   }
 
-  Future<void> applyToJob(String jobID, String userID, String? resume) async {
+  DateTime _getJobRecencyCutoffDate(String jobRecency) {
+    final now = DateTime.now();
+    switch (jobRecency) {
+      case 'Last 24 hours':
+        return now.subtract(const Duration(days: 1));
+      case 'Last 3 days':
+        return now.subtract(const Duration(days: 3));
+      case 'Last week':
+        return now.subtract(const Duration(days: 7));
+      case 'Last 2 weeks':
+        return now.subtract(const Duration(days: 14));
+      case 'Last month':
+        return now.subtract(const Duration(days: 30));
+      case 'Any time':
+      default:
+        return DateTime.fromMillisecondsSinceEpoch(0); // Very old date
+    }
+  }
+
+  Future<void> applyToJob(
+    String jobID,
+    String userID,
+    String? resumeUrl,
+  ) async {
     // Update usersApplied array in the job document
     await _firestore.collection('jobs').doc(jobID).update({
       'usersApplied': FieldValue.arrayUnion([userID]),
@@ -79,7 +117,7 @@ class JobService {
           'jobId': jobID,
           'status': 'applied',
           'appliedAt': FieldValue.serverTimestamp(),
-          'resume': resume,
+          'resumeUrl': resumeUrl,
         });
   }
 
