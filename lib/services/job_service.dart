@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:pronto/models/job_model.dart';
+import 'package:pronto/services/application_service.dart';
 
 class JobService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -46,7 +47,7 @@ class JobService {
           .toList();
 
       jobs = jobs.where((job) {
-        // Filter out jobs yser has already applied or declined
+        // Filter out jobs user has already applied or declined
         if (userId != null) {
           if (job.usersApplied.contains(userId) ||
               job.usersDeclined.contains(userId)) {
@@ -98,6 +99,21 @@ class JobService {
     }
   }
 
+  Future<Job?> getJobById(String jobId) async {
+    try {
+      final doc = await _firestore.collection('jobs').doc(jobId).get();
+
+      if (doc.exists) {
+        return Job.fromFirestore(doc);
+      } else {
+        return null;
+      }
+    } catch (e) {
+      print('Error fetching job by ID: $e');
+      return null;
+    }
+  }
+
   Future<void> applyToJob(
     String jobID,
     String userID,
@@ -107,18 +123,12 @@ class JobService {
     await _firestore.collection('jobs').doc(jobID).update({
       'usersApplied': FieldValue.arrayUnion([userID]),
     });
-
     // Create an application document in application subcollection
-    await _firestore
-        .collection('users')
-        .doc(userID)
-        .collection('applications')
-        .add({
-          'jobId': jobID,
-          'status': 'applied',
-          'appliedAt': FieldValue.serverTimestamp(),
-          'resumeUrl': resumeUrl,
-        });
+    await ApplicationService().createApplication(
+      userId: userID,
+      jobId: jobID,
+      resumeUrl: resumeUrl,
+    );
   }
 
   Future<void> markJobAsRejected(String jobID, String userID) async {
