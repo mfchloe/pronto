@@ -349,7 +349,6 @@ class _ApplicantHomeScreenState extends State<ApplicantHomeScreen> {
                       onPressed: _navigateToFilters,
                       icon: const Icon(Icons.tune),
                       style: IconButton.styleFrom(
-                        backgroundColor: Colors.white,
                         foregroundColor: Colors.grey[700],
                       ),
                     ),

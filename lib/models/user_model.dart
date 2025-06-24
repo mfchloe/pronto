@@ -90,7 +90,15 @@ class UserModel {
     };
   }
 
-  factory UserModel.fromMap(Map<String, dynamic> map) {
+  factory UserModel.fromMap(
+    Map<String, dynamic> map, {
+    required List<Application> applications,
+    required List<Notification> notifications,
+    required List<Education> education,
+    required List<WorkExperience> workExperience,
+    required List<ProjectExperience> projectExperience,
+    required List<Award> awards,
+  }) {
     return UserModel(
       userID: map['userID'],
       name: map['name'] ?? '',
@@ -111,33 +119,12 @@ class UserModel {
       linkedIn: map['linkedIn'],
       gitHub: map['gitHub'],
       resumes: Map<String, String>.from(map['resumes'] ?? {}),
-      education:
-          (map['education'] as List?)
-              ?.map((e) => Education.fromMap(e))
-              .toList() ??
-          [],
-      workExperience:
-          (map['workExperience'] as List?)
-              ?.map((e) => WorkExperience.fromMap(e))
-              .toList() ??
-          [],
-      projectExperience:
-          (map['projectExperience'] as List?)
-              ?.map((e) => ProjectExperience.fromMap(e))
-              .toList() ??
-          [],
-      awards:
-          (map['awards'] as List?)?.map((e) => Award.fromMap(e)).toList() ?? [],
-      applications:
-          (map['applications'] as List?)
-              ?.map((e) => Application.fromMap(e))
-              .toList() ??
-          [],
-      notifications:
-          (map['notifications'] as List?)
-              ?.map((e) => Notification.fromMap(e))
-              .toList() ??
-          [],
+      education: education,
+      workExperience: workExperience,
+      projectExperience: projectExperience,
+      awards: awards,
+      applications: applications,
+      notifications: notifications,
     );
   }
 }
