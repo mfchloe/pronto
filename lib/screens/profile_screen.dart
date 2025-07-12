@@ -9,6 +9,8 @@ import 'package:pronto/widgets/custom_text_field.dart';
 import 'package:pronto/widgets/custom_dropdown_field.dart';
 import 'package:pronto/constants/colours.dart';
 import 'dart:io';
+import 'package:flutter_slidable/flutter_slidable.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:path/path.dart' as path;
 
 class ProfileScreen extends StatefulWidget {
@@ -216,12 +218,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final isApplicant = widget.userType == UserType.applicant;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Colors.grey[50],
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20.0),
         child: Column(
           children: [
-            const SizedBox(height: 40), // Status bar padding
+            const SizedBox(height: 40),
             // Profile header with light blue container
             Container(
               padding: const EdgeInsets.all(24),
@@ -268,7 +270,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Name instead of "Job Seeker"
+                  // Name
                   Text(
                     userData['name'] ?? 'Unknown User',
                     style: const TextStyle(
@@ -794,56 +796,359 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget _buildResumeContent() {
     final resumes = userData['resumes'] as Map<String, dynamic>?;
 
+    // Show dialog to get resume type (only for new uploads)
+    Future<String?> showResumeTypeDialog([String? existingType]) async {
+      final typeController = TextEditingController();
+
+      return showDialog<String>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Resume Type'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CustomTextField(
+                controller: typeController,
+                label: 'What type of resume is this?',
+                hint: 'e.g., Software Developer, Marketing, etc.',
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context, null);
+              },
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context, typeController.text.trim());
+              },
+              child: const Text('Upload'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Upload/Re-upload a resume to Firebase Storage and save its URL to Firestore
+    Future<void> _uploadResume([String? existingType]) async {
+      try {
+        // Pick file
+        FilePickerResult? result = await FilePicker.platform.pickFiles(
+          type: FileType.custom,
+          allowedExtensions: ['pdf', 'doc', 'docx'],
+          allowMultiple: false,
+        );
+
+        if (result != null && result.files.single.path != null) {
+          // Show loading dialog
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (context) => AlertDialog(
+              content: Row(
+                children: [
+                  const CircularProgressIndicator(),
+                  const SizedBox(width: 16),
+                  Text(
+                    existingType != null
+                        ? 'Re-uploading resume...'
+                        : 'Uploading resume...',
+                  ),
+                ],
+              ),
+            ),
+          );
+
+          final file = File(result.files.single.path!);
+          final fileName = result.files.single.name;
+
+          // Create a unique file name
+          final timestamp = DateTime.now().millisecondsSinceEpoch;
+          final storageFileName = '${widget.userId}_${timestamp}_$fileName';
+
+          // Upload to Firebase Storage
+          final storageRef = FirebaseStorage.instance
+              .ref()
+              .child('resumes')
+              .child(widget.userId)
+              .child(storageFileName);
+
+          final uploadTask = storageRef.putFile(file);
+          await uploadTask;
+          final downloadUrl = await storageRef.getDownloadURL();
+
+          // Show dialog to get resume type (only for uploading resume)
+          String? resumeType = existingType ?? await showResumeTypeDialog();
+
+          if (resumeType != null && resumeType.isNotEmpty) {
+            // If re-uploading, delete the old file first
+            if (existingType != null &&
+                resumes?[existingType]?['url'] != null) {
+              try {
+                final oldFileUrl = resumes![existingType]!['url'] as String;
+                final oldRef = FirebaseStorage.instance.refFromURL(oldFileUrl);
+                await oldRef.delete();
+              } catch (e) {
+                print('Error deleting old file: $e');
+                // Continue even if old file deletion fails
+              }
+            }
+
+            // Update Firestore with new resume
+            await FirebaseFirestore.instance
+                .collection('users')
+                .doc(widget.userId)
+                .update({
+                  'resumes.$resumeType': {
+                    'url': downloadUrl,
+                    'fileName': fileName,
+                  },
+                });
+
+            // Close loading dialog
+            Navigator.pop(context);
+
+            // Refresh user data
+            await _loadUserData();
+
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    existingType != null
+                        ? 'Resume re-uploaded successfully as $resumeType'
+                        : 'Resume uploaded successfully as $resumeType',
+                  ),
+                  backgroundColor: Colors.green,
+                ),
+              );
+            }
+          } else {
+            // Delete uploaded file if user cancels
+            await storageRef.delete();
+            Navigator.pop(context);
+          }
+        }
+      } catch (e) {
+        // Close loading dialog if open
+        if (Navigator.canPop(context)) {
+          Navigator.pop(context);
+        }
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error uploading resume: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    }
+
+    // Delete resume function
+    Future<void> deleteResume(String type) async {
+      // Show confirmation dialog
+      bool? confirmed = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Delete Resume'),
+          content: Text('Are you sure you want to delete the $type resume?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Delete', style: TextStyle(color: Colors.red)),
+            ),
+          ],
+        ),
+      );
+
+      if (confirmed == true) {
+        try {
+          // Show loading dialog
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (context) => const AlertDialog(
+              content: Row(
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(width: 16),
+                  Text('Deleting resume...'),
+                ],
+              ),
+            ),
+          );
+
+          // Get the file URL before deleting from Firestore
+          final fileUrl = resumes?[type]?['url'] as String?;
+
+          // Delete from Firestore
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(widget.userId)
+              .update({'resumes.$type': FieldValue.delete()});
+
+          // Delete from Firebase Storage
+          if (fileUrl != null && fileUrl.isNotEmpty) {
+            try {
+              final ref = FirebaseStorage.instance.refFromURL(fileUrl);
+              await ref.delete();
+            } catch (e) {
+              print('Error deleting file from storage: $e');
+              // Continue even if file deletion fails
+            }
+          }
+
+          // Close loading dialog
+          Navigator.pop(context);
+
+          // Refresh user data
+          await _loadUserData();
+
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('$type resume deleted successfully'),
+                backgroundColor: Colors.green,
+              ),
+            );
+          }
+        } catch (e) {
+          // Close loading dialog if open
+          if (Navigator.canPop(context)) {
+            Navigator.pop(context);
+          }
+
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Error deleting resume: $e'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+        }
+      }
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Resume Management',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 16),
         if (resumes != null && resumes.isNotEmpty) ...[
-          ...resumes.entries.map((entry) {
-            final resumeData = entry.value as Map<String, dynamic>;
-            return Card(
-              margin: const EdgeInsets.only(bottom: 8),
-              child: ListTile(
-                leading: const Icon(Icons.picture_as_pdf, color: Colors.red),
-                title: Text(entry.key),
-                subtitle: Text(resumeData['fileName'] ?? 'Unknown file'),
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.download),
-                      onPressed: () {
-                        // Handle download
-                      },
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.delete, color: Colors.red),
-                      onPressed: () {
-                        // Handle delete
-                      },
-                    ),
-                  ],
-                ),
-              ),
-            );
-          }).toList(),
+          for (int i = 0; i < resumes.length; i++) ...[
+            Builder(
+              builder: (context) {
+                final entry = resumes.entries.elementAt(i);
+                final resumeData = entry.value as Map<String, dynamic>;
+                final isGeneral = entry.key.toLowerCase() == 'general';
+
+                return isGeneral
+                    ? Card(
+                        margin: EdgeInsets.zero,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: ListTile(
+                            title: Text(
+                              entry.key,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            subtitle: Text(
+                              resumeData['fileName'] ?? 'Unknown file',
+                            ),
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                IconButton(
+                                  icon: const Icon(Icons.refresh),
+                                  onPressed: () => _uploadResume(entry.key),
+                                  tooltip: 'Re-upload resume',
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      )
+                    : Slidable(
+                        key: ValueKey(entry.key),
+                        endActionPane: ActionPane(
+                          motion: const DrawerMotion(),
+                          extentRatio: 0.25,
+                          children: [
+                            SlidableAction(
+                              onPressed: (context) {
+                                deleteResume(entry.key);
+                              },
+                              backgroundColor: Colors.red,
+                              foregroundColor: Colors.white,
+                              icon: Icons.delete,
+                              borderRadius: const BorderRadius.only(
+                                topRight: Radius.circular(12),
+                                bottomRight: Radius.circular(12),
+                              ),
+                            ),
+                          ],
+                        ),
+                        child: Card(
+                          margin: EdgeInsets.zero,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: ListTile(
+                              title: Text(
+                                entry.key,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              subtitle: Text(
+                                resumeData['fileName'] ?? 'Unknown file',
+                              ),
+                              trailing: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    icon: const Icon(Icons.refresh),
+                                    onPressed: () => _uploadResume(entry.key),
+                                    tooltip: 'Re-upload resume',
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+              },
+            ),
+            if (i != resumes.length - 1) const SizedBox(height: 8),
+          ],
         ] else ...[
           const Text('No resumes uploaded yet'),
         ],
         const SizedBox(height: 16),
-        ElevatedButton.icon(
-          onPressed: () {
-            // Handle resume upload
-          },
-          icon: const Icon(Icons.upload_file),
-          label: const Text('Upload Resume'),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Theme.of(context).primaryColor,
-            foregroundColor: Colors.white,
+        Center(
+          child: ElevatedButton.icon(
+            onPressed: () => _uploadResume(),
+            icon: const Icon(Icons.add),
+            label: const Text('Upload Resume'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Theme.of(context).primaryColor,
+              foregroundColor: Colors.white,
+            ),
           ),
         ),
       ],
