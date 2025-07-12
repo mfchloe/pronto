@@ -110,8 +110,6 @@ class _JobDetailsScreenState extends State<JobDetailsScreen> {
                     height: 1.2,
                   ),
                   textAlign: TextAlign.center,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 6),
                 // Company name
