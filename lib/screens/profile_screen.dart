@@ -31,13 +31,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final user = FirebaseAuth.instance.currentUser!;
   final ImagePicker _picker = ImagePicker();
   Map<String, dynamic> userData = {};
+  Map<String, dynamic> companyData = {};
   Map<String, int> stats = {};
   bool isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _loadUserData();
+    _loadUserData().then((_) {
+      _loadCompanyData(); // can only call this after user data is loaded cause we need companyId in userData
+    });
   }
 
   Future<void> _loadUserData() async {
@@ -64,6 +67,55 @@ class _ProfileScreenState extends State<ProfileScreen> {
       setState(() {
         isLoading = false;
       });
+    }
+  }
+
+  Future<void> _loadCompanyData() async {
+    if (widget.userType == UserType.recruiter) {
+      try {
+        final companyDoc = await FirebaseFirestore.instance
+            .collection('companies')
+            .doc(userData['companyId'])
+            .get();
+
+        if (companyDoc.exists) {
+          setState(() {
+            companyData = companyDoc.data() ?? {};
+          });
+        }
+      } catch (e) {
+        print('Error loading company data: $e');
+      }
+    }
+  }
+
+  Future<void> _updateUserCompany(String newCompanyId) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('recruiters')
+          .doc(widget.userId)
+          .update({'companyId': newCompanyId});
+
+      // Update local userData
+      setState(() {
+        userData['companyId'] = newCompanyId;
+      });
+
+      // Reload company data
+      await _loadCompanyData();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Company updated successfully!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error updating company: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -1502,114 +1554,153 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget _buildCompanyInfoContent() {
     return Column(
       children: [
-        _buildEditableField(
-          'Company Name',
-          userData['company'] ?? '',
-          'company',
+        // Display current company info
+        Container(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Company logo and basic info
+              Row(
+                children: [
+                  // Company logo
+                  Container(
+                    width: 60,
+                    height: 60,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.grey.shade300),
+                    ),
+                    clipBehavior: Clip.antiAlias,
+                    child: companyData['logoUrl'] != null
+                        ? Image.network(
+                            companyData['logoUrl'],
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Icon(
+                                Icons.business,
+                                size: 30,
+                                color: Colors.grey.shade600,
+                              );
+                            },
+                          )
+                        : Icon(
+                            Icons.business,
+                            size: 30,
+                            color: Colors.grey.shade600,
+                          ),
+                  ),
+                  const SizedBox(width: 16),
+                  // Company name and industry
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          companyData['name'] ?? 'No company selected',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                            color: companyData['name'] != null
+                                ? Colors.black87
+                                : Colors.grey.shade500,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          companyData['industry'] ?? 'No industry specified',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey.shade600,
+                            fontWeight: FontWeight.w400,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              // Verification status (logic not implemented yet)
+              if (companyData['name'] != null) ...[
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: companyData['isVerified'] == true
+                        ? Colors.green.shade50
+                        : Colors.orange.shade50,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: companyData['isVerified'] == true
+                          ? Colors.green.shade200
+                          : Colors.orange.shade200,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        companyData['isVerified'] == true
+                            ? Icons.verified
+                            : Icons.pending,
+                        size: 16,
+                        color: companyData['isVerified'] == true
+                            ? Colors.green.shade700
+                            : Colors.orange.shade700,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        companyData['isVerified'] == true
+                            ? 'Verified Company'
+                            : 'Pending Verification',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: companyData['isVerified'] == true
+                              ? Colors.green.shade700
+                              : Colors.orange.shade700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ],
+          ),
         ),
-        _buildEditableField('Industry', userData['industry'] ?? '', 'industry'),
-        _buildEditableField(
-          'Description',
-          userData['description'] ?? '',
-          'description',
+
+        const SizedBox(height: 16),
+
+        // Button to change company
+        Center(
+          child: ElevatedButton.icon(
+            onPressed: () => _showChangeCompanyDialog(),
+            icon: const Icon(Icons.edit),
+            label: const Text('Change Company'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Theme.of(context).primaryColor,
+              foregroundColor: Colors.white,
+            ),
+          ),
         ),
       ],
     );
   }
 
-  Widget _buildEditableField(String label, String value, String field) {
-    final controller = TextEditingController(text: value);
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: CustomTextField(
-                  controller: controller,
-                  label: label,
-                  hint: 'Enter $label',
-                ),
-              ),
-              const SizedBox(width: 8),
-              ElevatedButton(
-                onPressed: () => _updateField(field, controller.text),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
-                ),
-                child: const Text('Save'),
-              ),
-            ],
-          ),
-        ],
+  // Updated method to show the dialog
+  void _showChangeCompanyDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => ChangeCompanyDialog(
+        currentCompanyId: userData['companyId'] ?? '',
+        onCompanySelected: (companyId) {
+          _updateUserCompany(companyId);
+        },
       ),
     );
-  }
-
-  Future<void> _updateField(String field, String value) async {
-    try {
-      Map<String, dynamic> updateData = {};
-
-      // Handle nested fields
-      if (field.contains('.')) {
-        final parts = field.split('.');
-        if (parts[0] == 'location') {
-          updateData['location.${parts[1]}'] = parts[1] == 'postalCode'
-              ? int.tryParse(value) ?? 0
-              : value;
-        } else if (parts[0] == 'socials') {
-          updateData['socials.${parts[1]}'] = value;
-        }
-      } else {
-        // Handle simple fields
-        if (field == 'age') {
-          updateData[field] = int.tryParse(value) ?? 0;
-        } else {
-          updateData[field] = value;
-        }
-      }
-
-      await FirebaseFirestore.instance
-          .collection(
-            widget.userType == UserType.applicant ? 'users' : 'recruiters',
-          )
-          .doc(widget.userId)
-          .update(updateData);
-
-      // Update local data
-      if (field.contains('.')) {
-        final parts = field.split('.');
-        if (parts[0] == 'location') {
-          if (userData['location'] == null) userData['location'] = {};
-          userData['location'][parts[1]] = parts[1] == 'postalCode'
-              ? int.tryParse(value) ?? 0
-              : value;
-        } else if (parts[0] == 'socials') {
-          if (userData['socials'] == null) userData['socials'] = {};
-          userData['socials'][parts[1]] = value;
-        }
-      } else {
-        userData[field] = field == 'age' ? int.tryParse(value) ?? 0 : value;
-      }
-
-      setState(() {});
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Field updated successfully!')),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Error updating field: $e')));
-    }
   }
 
   Future<void> _signOut() async {
@@ -1648,5 +1739,180 @@ class _ProfileScreenState extends State<ProfileScreen> {
         }
       }
     }
+  }
+}
+
+// Separate stateful widget for the company dialog
+class ChangeCompanyDialog extends StatefulWidget {
+  final String currentCompanyId;
+  final Function(String) onCompanySelected;
+
+  const ChangeCompanyDialog({
+    Key? key,
+    required this.currentCompanyId,
+    required this.onCompanySelected,
+  }) : super(key: key);
+
+  @override
+  _ChangeCompanyDialogState createState() => _ChangeCompanyDialogState();
+}
+
+class _ChangeCompanyDialogState extends State<ChangeCompanyDialog> {
+  List<QueryDocumentSnapshot> companies = [];
+  bool isLoading = true;
+  String searchQuery = '';
+
+  @override
+  void initState() {
+    super.initState();
+    loadCompanies();
+  }
+
+  // Load companies
+  void loadCompanies() async {
+    try {
+      QuerySnapshot snapshot = await FirebaseFirestore.instance
+          .collection('companies')
+          .orderBy('name')
+          .get();
+
+      setState(() {
+        companies = snapshot.docs;
+        isLoading = false;
+      });
+    } catch (e) {
+      print('Error loading companies: $e');
+      setState(() {
+        isLoading = false;
+      });
+    }
+  }
+
+  // Filter companies based on search
+  List<QueryDocumentSnapshot> getFilteredCompanies() {
+    if (searchQuery.isEmpty) {
+      return companies;
+    }
+    return companies.where((company) {
+      final data = company.data() as Map<String, dynamic>;
+      final name = data['name']?.toString().toLowerCase() ?? '';
+      final industry = data['industry']?.toString().toLowerCase() ?? '';
+      final query = searchQuery.toLowerCase();
+      return name.contains(query) || industry.contains(query);
+    }).toList();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Container(
+        width: MediaQuery.of(context).size.width * 0.9,
+        height: MediaQuery.of(context).size.height * 0.8,
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Select Company',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+                IconButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  icon: Icon(Icons.close),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+
+            // Search field
+            TextField(
+              decoration: InputDecoration(
+                hintText: 'Search companies...',
+                prefixIcon: Icon(Icons.search),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              onChanged: (value) {
+                setState(() {
+                  searchQuery = value;
+                });
+              },
+            ),
+            const SizedBox(height: 16),
+
+            // Companies list
+            Expanded(
+              child: isLoading
+                  ? Center(child: CircularProgressIndicator())
+                  : ListView.builder(
+                      itemCount: getFilteredCompanies().length,
+                      itemBuilder: (context, index) {
+                        final company = getFilteredCompanies()[index];
+                        final data = company.data() as Map<String, dynamic>;
+                        final isSelected =
+                            company.id == widget.currentCompanyId;
+
+                        return Card(
+                          color: isSelected ? Colors.blue.shade50 : null,
+                          margin: const EdgeInsets.symmetric(vertical: 4),
+                          child: ListTile(
+                            leading: data['logoUrl'] != null
+                                ? Container(
+                                    width: 40,
+                                    height: 40,
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(8),
+                                      image: DecorationImage(
+                                        image: NetworkImage(data['logoUrl']),
+                                        fit: BoxFit.cover,
+                                        onError: (_, __) {},
+                                      ),
+                                    ),
+                                  )
+                                : Container(
+                                    width: 40,
+                                    height: 40,
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(8),
+                                      color: Colors.grey.shade300,
+                                    ),
+                                    child: Icon(
+                                      Icons.business,
+                                      color: Colors.grey.shade600,
+                                    ),
+                                  ),
+                            title: Text(
+                              data['name'] ?? 'Unknown Company',
+                              style: TextStyle(
+                                fontWeight: isSelected
+                                    ? FontWeight.bold
+                                    : FontWeight.normal,
+                                fontSize: 14,
+                              ),
+                            ),
+                            subtitle: Text(
+                              data['industry'] ?? 'Unknown Industry',
+                              style: TextStyle(fontSize: 12),
+                            ),
+                            trailing: isSelected
+                                ? Icon(Icons.check_circle, color: Colors.blue)
+                                : null,
+                            onTap: () {
+                              widget.onCompanySelected(company.id);
+                              Navigator.of(context).pop();
+                            },
+                          ),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
